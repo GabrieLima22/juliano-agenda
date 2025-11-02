@@ -30,20 +30,51 @@ export const CalendarGrid = ({
   };
 
   const chipClass = (count: number, selected: boolean) => {
-    const base = "absolute top-1 right-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold border shadow-sm animate-smooth";
-    if (count >= 4) return `${base} ${selected ? "bg-red-100 text-red-800 border-red-200" : "bg-red-500/90 text-white border-red-400/50"}`;
-    if (count >= 2) return `${base} ${selected ? "bg-blue-100 text-blue-800 border-blue-200" : "bg-blue-500/90 text-white border-blue-400/50"}`;
-    return `${base} ${selected ? "bg-green-100 text-green-800 border-green-200" : "bg-green-500/90 text-white border-green-400/50"}`;
+    const base =
+      "absolute top-1 left-1 sm:left-auto sm:right-1 sm:top-1 flex items-center justify-center rounded-full border shadow-sm animate-smooth transition-all";
+
+    const sizeClasses = selected
+      ? "w-3 h-3 sm:w-auto sm:h-auto sm:min-w-[1.4rem] sm:px-1.5 sm:py-0.5"
+      : "w-2.5 h-2.5 sm:w-auto sm:h-auto sm:min-w-[1.4rem] sm:px-1.5 sm:py-0.5";
+
+    const colorClasses = (bg: string, text: string, border: string, selectedBg: string, selectedText: string) =>
+      `${base} ${sizeClasses} ${selected ? `${selectedBg} ${selectedText} ${border}` : `${bg} ${text} ${border}`}`;
+
+    if (count >= 4) {
+      return colorClasses(
+        "bg-red-500/90",
+        "text-transparent sm:text-white",
+        "border-red-400/50",
+        "bg-red-100",
+        "text-red-800",
+      );
+    }
+    if (count >= 2) {
+      return colorClasses(
+        "bg-blue-500/90",
+        "text-transparent sm:text-white",
+        "border-blue-400/50",
+        "bg-blue-100",
+        "text-blue-800",
+      );
+    }
+    return colorClasses(
+      "bg-green-500/90",
+      "text-transparent sm:text-white",
+      "border-green-400/50",
+      "bg-green-100",
+      "text-green-800",
+    );
   };
 
   return (
-    <div className="glass-effect rounded-3xl p-6 shadow-glass animate-fade-in">
+    <div className="glass-effect rounded-3xl p-4 sm:p-6 shadow-glass animate-fade-in" translate="no" lang="pt-BR">
       {/* Week days header */}
-      <div className="grid grid-cols-7 gap-2 mb-4">
+      <div className="grid grid-cols-7 gap-2 mb-4 text-xs sm:text-sm">
         {weekDays.map((day) => (
           <div
             key={day}
-            className="text-center text-sm font-semibold text-muted-foreground py-2"
+            className="text-center font-semibold text-muted-foreground py-2"
           >
             {day}
           </div>
@@ -63,7 +94,7 @@ export const CalendarGrid = ({
               key={i}
               onClick={() => onDateClick(date)}
               className={cn(
-                "relative aspect-square rounded-2xl p-2 text-sm font-medium transition-all duration-300",
+                "relative aspect-square rounded-2xl p-2 text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2",
                 "hover:scale-105 hover:shadow-lg animate-smooth",
                 isCurrentMonth
                   ? "text-foreground"
@@ -77,7 +108,7 @@ export const CalendarGrid = ({
                 {date.getDate()}
               </span>
               <span className={chipClass(meetingCount, Boolean(isSelected))}>
-                {meetingCount}
+                <span className="hidden sm:inline">{meetingCount}</span>
               </span>
             </button>
           );
@@ -86,3 +117,4 @@ export const CalendarGrid = ({
     </div>
   );
 };
+

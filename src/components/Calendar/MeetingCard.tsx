@@ -1,13 +1,38 @@
-import { Meeting } from "@/types/meeting";
+﻿import { Meeting } from "@/types/meeting";
 import { Clock, Users, Timer, Video, MapPin, Link as LinkIcon } from "lucide-react";
 
 interface MeetingCardProps {
   meeting: Meeting;
+  onSelect?: (meeting: Meeting) => void;
 }
 
-export const MeetingCard = ({ meeting }: MeetingCardProps) => {
+export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
+  const isInteractive = typeof onSelect === "function";
+
   return (
-    <div className="glass-effect rounded-2xl p-4 shadow-glass animate-fade-in-up hover:scale-102 animate-smooth">
+    <div
+      role={isInteractive ? "button" : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      onClick={isInteractive ? () => onSelect?.(meeting) : undefined}
+      onKeyDown={
+        isInteractive
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                onSelect?.(meeting);
+              }
+            }
+          : undefined
+      }
+      className={[
+        "glass-effect rounded-2xl p-4 shadow-glass animate-fade-in-up animate-smooth transition-transform",
+        isInteractive
+          ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 hover:scale-[1.02] hover:bg-primary/5 hover:shadow-xl"
+          : "",
+      ]
+        .join(" ")
+        .trim()}
+    >
       <div className="mb-3">
         <h3 className="font-semibold text-lg gradient-text">{meeting.title}</h3>
       </div>
@@ -62,3 +87,6 @@ export const MeetingCard = ({ meeting }: MeetingCardProps) => {
     </div>
   );
 };
+
+
+

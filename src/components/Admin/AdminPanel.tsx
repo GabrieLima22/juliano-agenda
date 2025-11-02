@@ -10,6 +10,7 @@ import {
   Video,
   MapPin,
   Link as LinkIcon,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -20,9 +21,10 @@ interface AdminPanelProps {
   meetings: Meeting[];
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
+  onOpenDetails?: (meeting: Meeting) => void;
 }
 
-export const AdminPanel = ({ meetings, onApprove, onReject }: AdminPanelProps) => {
+export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: AdminPanelProps) => {
   return (
     <div className="glass-effect rounded-3xl p-6 shadow-glass animate-fade-in">
       <div className="flex items-center gap-3 mb-6">
@@ -132,6 +134,17 @@ export const AdminPanel = ({ meetings, onApprove, onReject }: AdminPanelProps) =
                 </div>
 
                 <div className="flex md:flex-col gap-2 justify-end">
+                  {onOpenDetails && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => onOpenDetails(meeting)}
+                      className="rounded-xl border-primary/40 text-primary hover:bg-primary/10 shadow-lg hover:scale-105 animate-smooth flex-1 md:flex-none"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      Detalhes
+                    </Button>
+                  )}
                   <Button
                     onClick={() => onApprove(meeting.id)}
                     className="bg-green-500 hover:bg-green-600 text-white shadow-lg hover:scale-105 animate-smooth rounded-xl flex-1 md:flex-none"

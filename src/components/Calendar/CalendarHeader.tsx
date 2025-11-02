@@ -15,11 +15,11 @@ export const CalendarHeader = ({
   onNextMonth,
 }: CalendarHeaderProps) => {
   return (
-    <div className="flex items-center justify-between mb-8">
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8" translate="no" lang="pt-BR">
       <h2 className="text-3xl font-bold gradient-text capitalize">
         {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
       </h2>
-      <div className="flex gap-2">
+      <div className="flex gap-2 self-end sm:self-auto">
         <Button
           variant="outline"
           size="icon"

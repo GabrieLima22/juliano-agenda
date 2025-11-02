@@ -66,3 +66,39 @@ export const updateMeetingStatus = async (id: string, status: "approved" | "reje
 export const deleteMeeting = async (id: string): Promise<void> => {
   await request(`meetings.php?id=${encodeURIComponent(id)}`, { method: "DELETE" });
 };
+
+export interface MeetingUpdatePayload {
+  id: string;
+  title?: string;
+  date?: string;
+  time?: string;
+  participants?: string[];
+  description?: string | null;
+  durationMinutes?: number | null;
+  meetingType?: "presencial" | "zoom" | "meet";
+  onlineLink?: string | null;
+  status?: Meeting["status"];
+}
+
+export const updateMeeting = async (payload: MeetingUpdatePayload): Promise<Meeting> => {
+  const body: Record<string, unknown> = { id: payload.id };
+
+  const append = <K extends keyof MeetingUpdatePayload>(key: K) => {
+    const value = payload[key];
+    if (value !== undefined) {
+      body[key] = value;
+    }
+  };
+
+  append("title");
+  append("date");
+  append("time");
+  append("participants");
+  append("description");
+  append("durationMinutes");
+  append("meetingType");
+  append("onlineLink");
+  append("status");
+
+  return request<Meeting>("meetings.php", { method: "PATCH", json: body });
+};

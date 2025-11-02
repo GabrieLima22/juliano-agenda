@@ -7,13 +7,14 @@ import { Calendar } from "lucide-react";
 interface MeetingListProps {
   date: Date;
   meetings: Meeting[];
+  onMeetingSelect?: (meeting: Meeting) => void;
 }
 
-export const MeetingList = ({ date, meetings }: MeetingListProps) => {
+export const MeetingList = ({ date, meetings, onMeetingSelect }: MeetingListProps) => {
   const formattedDate = format(date, "dd 'de' MMMM", { locale: ptBR });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" translate="no" lang="pt-BR">
       <div className="flex items-center gap-3">
         <Calendar className="h-6 w-6 text-primary" />
         <h2 className="text-2xl font-bold capitalize">{formattedDate}</h2>
@@ -26,7 +27,11 @@ export const MeetingList = ({ date, meetings }: MeetingListProps) => {
       ) : (
         <div className="space-y-3">
           {meetings.map((meeting) => (
-            <MeetingCard key={meeting.id} meeting={meeting} />
+            <MeetingCard
+              key={meeting.id}
+              meeting={meeting}
+              onSelect={onMeetingSelect}
+            />
           ))}
         </div>
       )}

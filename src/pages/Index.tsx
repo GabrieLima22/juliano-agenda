@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { CalendarHeader } from "@/components/Calendar/CalendarHeader";
 import { CalendarGrid } from "@/components/Calendar/CalendarGrid";
 import { MeetingList } from "@/components/Calendar/MeetingList";
@@ -6,7 +6,17 @@ import { NewMeetingDialog } from "@/components/Calendar/NewMeetingDialog";
 import { AdminToggle } from "@/components/Admin/AdminToggle";
 import { AdminLoginDialog } from "@/components/Admin/AdminLoginDialog";
 import { AdminPanel } from "@/components/Admin/AdminPanel";
-import { getMeetings, getMeetingsForDate, saveMeeting, getPendingMeetings, updateMeetingStatus } from "@/lib/meetingStorage";
+import { MeetingDetailsDialog } from "@/components/Admin/MeetingDetailsDialog";
+import {
+  getMeetings,
+  getMeetingsForDate,
+  saveMeeting,
+  getPendingMeetings,
+  updateMeetingStatus,
+  deleteMeeting,
+  updateMeeting,
+  MeetingUpdatePayload,
+} from "@/lib/meetingStorage";
 import { Meeting } from "@/types/meeting";
 import { addMonths, subMonths } from "date-fns";
 import { toast } from "sonner";
@@ -22,6 +32,10 @@ const Index = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [pendingMeetings, setPendingMeetings] = useState<Meeting[]>([]);
+  const [selectedMeetingForAdmin, setSelectedMeetingForAdmin] = useState<Meeting | null>(null);
+  const [showMeetingDetails, setShowMeetingDetails] = useState(false);
+  const [isSavingMeeting, setIsSavingMeeting] = useState(false);
+  const [isDeletingMeeting, setIsDeletingMeeting] = useState(false);
 
   const API_BASE: string = (import.meta as any).env?.VITE_API_BASE || "http://localhost/juliano-agenda/api";
 
@@ -101,6 +115,17 @@ const Index = () => {
     toast.success("Você saiu do modo administrador.");
   };
 
+  const handleMeetingSelect = (meeting: Meeting) => {
+    setSelectedMeetingForAdmin(meeting);
+    setShowMeetingDetails(true);
+  };
+
+  const handleMeetingDialogOpenChange = (open: boolean) => {
+    setShowMeetingDetails(open);
+    if (!open) {
+      setSelectedMeetingForAdmin(null);
+    }
+  };
   const handleApproveMeeting = async (id: string) => {
     await updateMeetingStatus(id, "approved");
     await loadMeetings();
@@ -115,13 +140,66 @@ const Index = () => {
     toast.success("Solicitação rejeitada.");
   };
 
+  const handleSaveMeetingChanges = async (changes: MeetingUpdatePayload) => {
+    if (!changes?.id) {
+      return;
+    }
+    setIsSavingMeeting(true);
+    try {
+      await updateMeeting(changes);
+      await loadMeetings();
+      if (isAdmin) {
+        await loadPendingMeetings();
+      }
+      toast.success("Reunião atualizada com sucesso!");
+      setShowMeetingDetails(false);
+      setSelectedMeetingForAdmin(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao atualizar a reunião.";
+      toast.error(message);
+    } finally {
+      setIsSavingMeeting(false);
+    }
+  };
+
+  const handleDeleteMeeting = async (meeting: Meeting) => {
+    const confirmed = window.confirm(`Deseja realmente excluir a reunião "${meeting.title}"?`);
+    if (!confirmed) {
+      return;
+    }
+    setIsDeletingMeeting(true);
+    try {
+      await deleteMeeting(meeting.id);
+      await loadMeetings();
+      if (isAdmin) {
+        await loadPendingMeetings();
+      }
+      toast.success("Reunião excluída com sucesso.");
+      setShowMeetingDetails(false);
+      setSelectedMeetingForAdmin(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao excluir a reunião.";
+      toast.error(message);
+    } finally {
+      setIsDeletingMeeting(false);
+    }
+  };
   return (
-    <div className="min-h-screen p-4 md:p-8">
+    <div className="min-h-screen p-4 md:p-8" lang="pt-BR">
       <AdminToggle onClick={handleAdminToggleClick} />
       <AdminLoginDialog
         open={showAdminLogin}
         onOpenChange={setShowAdminLogin}
         onLogin={handleAdminLogin}
+      />
+      <MeetingDetailsDialog
+        meeting={selectedMeetingForAdmin}
+        open={showMeetingDetails && selectedMeetingForAdmin !== null}
+        onOpenChange={handleMeetingDialogOpenChange}
+        onSave={handleSaveMeetingChanges}
+        onDelete={handleDeleteMeeting}
+        saving={isSavingMeeting}
+        deleting={isDeletingMeeting}
       />
 
       <div className="max-w-7xl mx-auto">
@@ -177,6 +255,7 @@ const Index = () => {
             meetings={pendingMeetings}
             onApprove={handleApproveMeeting}
             onReject={handleRejectMeeting}
+            onOpenDetails={handleMeetingSelect}
           />
         ) : (
           <>
@@ -203,7 +282,11 @@ const Index = () => {
               <div className="lg:col-span-1">
                 {selectedDate && (
                   <div className="sticky top-8 animate-slide-in-right">
-                    <MeetingList date={selectedDate} meetings={selectedDateMeetings} />
+                    <MeetingList
+                      date={selectedDate}
+                      meetings={selectedDateMeetings}
+                      onMeetingSelect={isAdmin ? handleMeetingSelect : undefined}
+                    />
                   </div>
                 )}
               </div>
@@ -216,4 +299,13 @@ const Index = () => {
 };
 
 export default Index;
+
+
+
+
+
+
+
+
+
 

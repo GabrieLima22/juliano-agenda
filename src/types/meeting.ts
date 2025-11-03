@@ -1,4 +1,4 @@
-export interface Meeting {
+﻿export interface Meeting {
   id: string;
   title: string;
   date: string; // ISO date string

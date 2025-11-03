@@ -7,9 +7,9 @@ import { componentTagger } from "lovable-tagger";
 export default defineConfig(({ mode }) => ({
   // Quando servido em subpasta no Apache (ex.: /juliano-agenda/),
   // precisamos ajustar a base apenas no build.
-  // Serviremos o app em /juliano-agenda/ sob o Apache.
-  // Portanto, no build os assets usam essa base.
-  base: mode === "production" ? "/juliano-agenda/" : "/",
+  // No build usamos base relativa para funcionar tanto em produção (raiz)
+  // quanto em ambientes servidos sob subpasta (ex.: /juliano-agenda/).
+  base: mode === "production" ? "./" : "/",
   server: {
     host: "::",
     port: 8080,

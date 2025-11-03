@@ -1,4 +1,4 @@
-import { Meeting } from "@/types/meeting";
+﻿import { Meeting } from "@/types/meeting";
 import {
   Clock,
   Users,
@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { parseLocalDate } from "@/lib/utils";
 
 interface AdminPanelProps {
   meetings: Meeting[];
@@ -25,12 +26,13 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: AdminPanelProps) => {
+  const fmtTime = (t: string | undefined) => (t ? String(t).slice(0, 5) : "");
   return (
     <div className="glass-effect rounded-3xl p-6 shadow-glass animate-fade-in">
       <div className="flex items-center gap-3 mb-6">
         <AlertCircle className="h-7 w-7 text-primary" />
         <div>
-          <h2 className="text-2xl font-bold gradient-text">Solicitações Pendentes</h2>
+          <h2 className="text-2xl font-bold gradient-text">solicitações Pendentes</h2>
           <p className="text-sm text-muted-foreground">
             {meetings.length} {meetings.length === 1 ? "solicitação" : "solicitações"} aguardando aprovação
           </p>
@@ -41,7 +43,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
         <div className="text-center py-12">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4 opacity-50" />
           <p className="text-muted-foreground text-lg">Nenhuma solicitação pendente</p>
-          <p className="text-sm text-muted-foreground mt-2">Todas as reuniões foram processadas</p>
+          <p className="text-sm text-muted-foreground mt-2">Todas as reunies foram processadas</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -63,7 +65,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="h-4 w-4 text-primary" />
                       <span className="font-medium">
-                        {format(new Date(meeting.date), "dd 'de' MMMM 'de' yyyy", {
+                        {format(parseLocalDate(meeting.date), "dd 'de' MMMM 'de' yyyy", {
                           locale: ptBR,
                         })}
                       </span>
@@ -71,7 +73,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
 
                     <div className="flex items-center gap-2 text-sm">
                       <Clock className="h-4 w-4 text-primary" />
-                      <span className="font-medium">{meeting.time}</span>
+                      <span className="font-medium">{fmtTime(meeting.time)}</span>
                     </div>
                   </div>
 
@@ -101,7 +103,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                           target="_blank"
                           rel="noreferrer"
                           className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
-                          title="Abrir link da reunião"
+                          title="Abrir link da reunio"
                         >
                           <LinkIcon className="h-3.5 w-3.5" />
                           <span>Link</span>
@@ -129,11 +131,11 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                   )}
 
                   <div className="text-xs text-muted-foreground pt-2">
-                    Solicitado em {format(new Date(meeting.createdAt), "dd/MM/yyyy 'às' HH:mm")}
+                    Solicitado em {format(new Date(meeting.createdAt), "dd/MM/yyyy 'ás' HH:mm")}
                   </div>
                 </div>
 
-                <div className="flex md:flex-col gap-2 justify-end">
+                <div className="flex flex-wrap md:flex-col gap-2 justify-end">
                   {onOpenDetails && (
                     <Button
                       type="button"

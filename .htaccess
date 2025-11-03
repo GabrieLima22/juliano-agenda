@@ -1,0 +1,20 @@
+RewriteEngine On
+RewriteBase /juliano-agenda/
+
+# Se alguém acessar /juliano-agenda/dist/ ou /juliano-agenda/dist/index.html,
+# redireciona para a raiz canônica /juliano-agenda/
+RewriteRule ^dist/?$ /juliano-agenda/ [R=302,L]
+RewriteRule ^dist/index\.html$ /juliano-agenda/ [R=302,L]
+
+# Mapear assets gerados para a pasta dist
+RewriteRule ^assets/(.*)$ dist/assets/$1 [L]
+RewriteRule ^favicon\.ico$ dist/favicon.ico [L]
+RewriteRule ^robots\.txt$ dist/robots.txt [L]
+
+# Ignorar arquivos/pastas existentes
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# SPA fallback para index.php (que serve o dist/index.html)
+RewriteRule ^ index.php [L]

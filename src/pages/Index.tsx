@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿﻿import { useState, useEffect } from "react";
 import { CalendarHeader } from "@/components/Calendar/CalendarHeader";
 import { CalendarGrid } from "@/components/Calendar/CalendarGrid";
 import { MeetingList } from "@/components/Calendar/MeetingList";
@@ -130,7 +130,7 @@ const Index = () => {
     await updateMeetingStatus(id, "approved");
     await loadMeetings();
     await loadPendingMeetings();
-    toast.success("Reunião aprovada com sucesso!");
+    toast.success("reunião aprovada com sucesso!");
   };
 
   const handleRejectMeeting = async (id: string) => {
@@ -151,7 +151,7 @@ const Index = () => {
       if (isAdmin) {
         await loadPendingMeetings();
       }
-      toast.success("Reunião atualizada com sucesso!");
+      toast.success("reunião atualizada com sucesso!");
       setShowMeetingDetails(false);
       setSelectedMeetingForAdmin(null);
     } catch (error) {
@@ -174,7 +174,7 @@ const Index = () => {
       if (isAdmin) {
         await loadPendingMeetings();
       }
-      toast.success("Reunião excluída com sucesso.");
+      toast.success("reunião excluída com sucesso.");
       setShowMeetingDetails(false);
       setSelectedMeetingForAdmin(null);
     } catch (error) {
@@ -215,7 +215,8 @@ const Index = () => {
 
         {/* Admin Controls */}
         {isAdmin && (
-          <div className="flex justify-center gap-4 mb-8 animate-fade-in">
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8 animate-fade-in">
+            <NewMeetingDialog selectedDate={selectedDate} onSave={handleSaveMeeting} />
             <Button
               variant={showAdminPanel ? "outline" : "default"}
               onClick={() => setShowAdminPanel(false)}

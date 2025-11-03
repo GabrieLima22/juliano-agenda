@@ -26,7 +26,7 @@ export const CalendarGrid = ({
 
   const getMeetingCountForDate = (date: Date) => {
     const dateStr = date.toISOString().split("T")[0];
-    return meetings.filter((m) => m.date === dateStr).length;
+    return meetings.filter((meeting) => meeting.date === dateStr).length;
   };
 
   const chipClass = (count: number, selected: boolean) => {
@@ -117,4 +117,5 @@ export const CalendarGrid = ({
     </div>
   );
 };
+
 

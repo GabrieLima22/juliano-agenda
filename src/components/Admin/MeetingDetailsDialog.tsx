@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -209,7 +209,13 @@ export const MeetingDetailsDialog = ({
                 <Users className="h-4 w-4 text-primary" />
                 Participantes (separe por vírgulas)
               </Label>
-              <Input id="meeting-participants" value={participants} onChange={(e) => setParticipants(e.target.value)} placeholder="Juliano, Maria, Pedro" className="rounded-xl" />
+              <Input
+                id="meeting-participants"
+                value={participants}
+                onChange={(e) => setParticipants(e.target.value)}
+                placeholder="Juliano, Maria, Pedro"
+                className="rounded-xl"
+              />
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -217,7 +223,13 @@ export const MeetingDetailsDialog = ({
                 <FileText className="h-4 w-4 text-primary" />
                 Pauta
               </Label>
-              <Textarea id="meeting-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Resumo do que será discutido..." className="rounded-xl min-h-[96px]" />
+              <Textarea
+                id="meeting-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Resumo do que será discutido..."
+                className="rounded-xl min-h-[96px]"
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -226,7 +238,14 @@ export const MeetingDetailsDialog = ({
                   <Timer className="h-4 w-4 text-primary" />
                   Duração (minutos)
                 </Label>
-                <Input id="meeting-duration" type="number" min={0} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} className="rounded-xl" />
+                <Input
+                  id="meeting-duration"
+                  type="number"
+                  min={0}
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  className="rounded-xl"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="meeting-type" className="flex items-center gap-2">
@@ -252,7 +271,15 @@ export const MeetingDetailsDialog = ({
                   <LinkIcon className="h-4 w-4 text-primary" />
                   Link da reunião
                 </Label>
-                <Input id="meeting-link" type="url" value={onlineLink} onChange={(e) => setOnlineLink(e.target.value)} placeholder="https://..." className="rounded-xl" required={meetingType !== "presencial"} />
+                <Input
+                  id="meeting-link"
+                  type="url"
+                  value={onlineLink}
+                  onChange={(e) => setOnlineLink(e.target.value)}
+                  placeholder="https://..."
+                  className="rounded-xl"
+                  required={meetingType !== "presencial"}
+                />
               </div>
             )}
           </div>
@@ -271,3 +298,4 @@ export const MeetingDetailsDialog = ({
     </Dialog>
   );
 };
+

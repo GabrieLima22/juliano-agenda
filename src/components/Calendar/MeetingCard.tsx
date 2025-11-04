@@ -1,5 +1,6 @@
-﻿import { Meeting } from "@/types/meeting";
+import { Meeting } from "@/types/meeting";
 import { Clock, Users, Timer, Video, MapPin, Link as LinkIcon } from "lucide-react";
+import { formatDuration } from "@/lib/duration";
 
 interface MeetingCardProps {
   meeting: Meeting;
@@ -54,7 +55,7 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
         {typeof meeting.durationMinutes === "number" && meeting.durationMinutes > 0 && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Timer className="h-4 w-4" />
-            <span>{meeting.durationMinutes} min</span>
+            <span>{formatDuration(meeting.durationMinutes)}</span>
           </div>
         )}
 

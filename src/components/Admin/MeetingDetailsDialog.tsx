@@ -18,6 +18,7 @@ import { Calendar, Clock, FileText, Link as LinkIcon, Timer, Trash2, Users, Vide
 import { Meeting } from "@/types/meeting";
 import { format } from "date-fns";
 import { MeetingUpdatePayload } from "@/lib/meetingStorage";
+import { formatDuration, parseDurationInput } from "@/lib/duration";
 
 interface MeetingDetailsDialogProps {
   meeting: Meeting | null;
@@ -50,60 +51,12 @@ export const MeetingDetailsDialog = ({
   const [onlineLink, setOnlineLink] = useState("");
   const [status, setStatus] = useState<MeetingStatus>("pending");
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const hourString = hours.toString().padStart(2, "0");
-    const minuteString = mins.toString().padStart(2, "0");
-    return `${hourString}:${minuteString}`;
-  };
-
-  const parseDuration = (raw: string): { minutes: number; formatted: string } | null => {
-    const sanitized = raw.trim();
-
-    if (!sanitized) {
-      return null;
-    }
-
-    if (/^\d+$/.test(sanitized)) {
-      const minutes = Number(sanitized);
-      if (Number.isNaN(minutes)) {
-        return null;
-      }
-      return { minutes, formatted: formatDuration(minutes) };
-    }
-
-    const colonMatch = sanitized.match(/^(\d+):(\d{1,2})$/);
-    if (colonMatch) {
-      const hours = Number(colonMatch[1]);
-      const mins = Number(colonMatch[2]);
-      if (Number.isNaN(hours) || Number.isNaN(mins) || mins >= 60) {
-        return null;
-      }
-      const totalMinutes = hours * 60 + mins;
-      return { minutes: totalMinutes, formatted: formatDuration(totalMinutes) };
-    }
-
-    const hourMatch = sanitized.match(/^(\d+)[hH](\d{1,2})$/);
-    if (hourMatch) {
-      const hours = Number(hourMatch[1]);
-      const mins = Number(hourMatch[2]);
-      if (Number.isNaN(hours) || Number.isNaN(mins) || mins >= 60) {
-        return null;
-      }
-      const totalMinutes = hours * 60 + mins;
-      return { minutes: totalMinutes, formatted: formatDuration(totalMinutes) };
-    }
-
-    return null;
-  };
-
   const handleDurationBlur = () => {
     if (!durationInput.trim()) {
       return;
     }
 
-    const parsed = parseDuration(durationInput);
+    const parsed = parseDurationInput(durationInput);
     if (parsed) {
       setDurationInput(parsed.formatted);
       return;
@@ -160,7 +113,7 @@ export const MeetingDetailsDialog = ({
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
 
-    const parsedDuration = durationInput ? parseDuration(durationInput) : null;
+    const parsedDuration = durationInput ? parseDurationInput(durationInput) : null;
     if (durationInput && !parsedDuration) {
       // eslint-disable-next-line no-alert
       alert("Informe a duracao em minutos ou no formato HH:MM.");

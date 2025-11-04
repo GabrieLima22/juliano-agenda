@@ -1,4 +1,4 @@
-﻿import { Meeting } from "@/types/meeting";
+import { Meeting } from "@/types/meeting";
 import {
   Clock,
   Users,
@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { parseLocalDate } from "@/lib/utils";
+import { formatDuration } from "@/lib/duration";
 
 interface AdminPanelProps {
   meetings: Meeting[];
@@ -83,7 +84,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                       <div className="flex items-center gap-2 text-sm">
                         <Timer className="h-4 w-4 text-primary" />
                         <span className="text-muted-foreground">Duração:</span>
-                        <span className="font-medium">{meeting.durationMinutes} min</span>
+                        <span className="font-medium">{formatDuration(meeting.durationMinutes)}</span>
                       </div>
                     )}
 

@@ -9,6 +9,7 @@ import { Plus, Calendar, Clock, Users, FileText, Timer, Video, Link as LinkIcon,
 import { Meeting } from "@/types/meeting";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { parseDurationInput } from "@/lib/duration";
 
 interface NewMeetingDialogProps {
   selectedDate: Date | null;
@@ -26,60 +27,12 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
   const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet">("presencial");
   const [onlineLink, setOnlineLink] = useState("");
 
-  const formatDuration = (minutes: number) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const hourString = hours.toString().padStart(2, "0");
-    const minuteString = mins.toString().padStart(2, "0");
-    return `${hourString}:${minuteString}`;
-  };
-
-  const parseDuration = (raw: string): { minutes: number; formatted: string } | null => {
-    const sanitized = raw.trim();
-
-    if (!sanitized) {
-      return null;
-    }
-
-    if (/^\d+$/.test(sanitized)) {
-      const minutes = Number(sanitized);
-      if (Number.isNaN(minutes)) {
-        return null;
-      }
-      return { minutes, formatted: formatDuration(minutes) };
-    }
-
-    const colonMatch = sanitized.match(/^(\d+):(\d{1,2})$/);
-    if (colonMatch) {
-      const hours = Number(colonMatch[1]);
-      const mins = Number(colonMatch[2]);
-      if (Number.isNaN(hours) || Number.isNaN(mins) || mins >= 60) {
-        return null;
-      }
-      const totalMinutes = hours * 60 + mins;
-      return { minutes: totalMinutes, formatted: formatDuration(totalMinutes) };
-    }
-
-    const hourMatch = sanitized.match(/^(\d+)[hH](\d{1,2})$/);
-    if (hourMatch) {
-      const hours = Number(hourMatch[1]);
-      const mins = Number(hourMatch[2]);
-      if (Number.isNaN(hours) || Number.isNaN(mins) || mins >= 60) {
-        return null;
-      }
-      const totalMinutes = hours * 60 + mins;
-      return { minutes: totalMinutes, formatted: formatDuration(totalMinutes) };
-    }
-
-    return null;
-  };
-
   const handleDurationBlur = () => {
     if (!durationInput.trim()) {
       return;
     }
 
-    const parsed = parseDuration(durationInput);
+    const parsed = parseDurationInput(durationInput);
     if (parsed) {
       setDurationInput(parsed.formatted);
     } else {
@@ -99,7 +52,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       return;
     }
 
-    const parsedDuration = durationInput ? parseDuration(durationInput) : null;
+    const parsedDuration = durationInput ? parseDurationInput(durationInput) : null;
     if (durationInput && !parsedDuration) {
       toast.error("Informe a duracao em minutos ou no formato HH:MM.");
       return;
@@ -216,7 +169,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                 <Input
                   id="duration"
                   type="text"
-                  placeholder="digite em minutos ou HH:MM"
+                  placeholder="Ex: 01:30 ou 90"
                   value={durationInput}
                   onChange={(e) => setDurationInput(e.target.value)}
                   onBlur={handleDurationBlur}

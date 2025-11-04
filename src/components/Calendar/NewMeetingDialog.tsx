@@ -22,9 +22,70 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
   const [time, setTime] = useState("");
   const [participants, setParticipants] = useState("");
   const [description, setDescription] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState<number | "">("");
+  const [durationInput, setDurationInput] = useState("");
   const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet">("presencial");
   const [onlineLink, setOnlineLink] = useState("");
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const hourString = hours.toString().padStart(2, "0");
+    const minuteString = mins.toString().padStart(2, "0");
+    return `${hourString}:${minuteString}`;
+  };
+
+  const parseDuration = (raw: string): { minutes: number; formatted: string } | null => {
+    const sanitized = raw.trim();
+
+    if (!sanitized) {
+      return null;
+    }
+
+    if (/^\d+$/.test(sanitized)) {
+      const minutes = Number(sanitized);
+      if (Number.isNaN(minutes)) {
+        return null;
+      }
+      return { minutes, formatted: formatDuration(minutes) };
+    }
+
+    const colonMatch = sanitized.match(/^(\d+):(\d{1,2})$/);
+    if (colonMatch) {
+      const hours = Number(colonMatch[1]);
+      const mins = Number(colonMatch[2]);
+      if (Number.isNaN(hours) || Number.isNaN(mins) || mins >= 60) {
+        return null;
+      }
+      const totalMinutes = hours * 60 + mins;
+      return { minutes: totalMinutes, formatted: formatDuration(totalMinutes) };
+    }
+
+    const hourMatch = sanitized.match(/^(\d+)[hH](\d{1,2})$/);
+    if (hourMatch) {
+      const hours = Number(hourMatch[1]);
+      const mins = Number(hourMatch[2]);
+      if (Number.isNaN(hours) || Number.isNaN(mins) || mins >= 60) {
+        return null;
+      }
+      const totalMinutes = hours * 60 + mins;
+      return { minutes: totalMinutes, formatted: formatDuration(totalMinutes) };
+    }
+
+    return null;
+  };
+
+  const handleDurationBlur = () => {
+    if (!durationInput.trim()) {
+      return;
+    }
+
+    const parsed = parseDuration(durationInput);
+    if (parsed) {
+      setDurationInput(parsed.formatted);
+    } else {
+      toast.error("Informe a duracao em minutos ou no formato HH:MM.");
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +96,12 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
     }
     if (meetingType !== "presencial" && !onlineLink) {
       toast.error("Informe o link da reunião");
+      return;
+    }
+
+    const parsedDuration = durationInput ? parseDuration(durationInput) : null;
+    if (durationInput && !parsedDuration) {
+      toast.error("Informe a duracao em minutos ou no formato HH:MM.");
       return;
     }
 
@@ -50,7 +117,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       time,
       participants: participantsList,
       description,
-      durationMinutes: typeof durationMinutes === "number" ? durationMinutes : undefined,
+      durationMinutes: parsedDuration?.minutes,
       meetingType,
       onlineLink: meetingType === "presencial" ? null : onlineLink || null,
       createdAt: new Date().toISOString(),
@@ -65,7 +132,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
     setTime("");
     setParticipants("");
     setDescription("");
-    setDurationMinutes("");
+    setDurationInput("");
     setMeetingType("presencial");
     setOnlineLink("");
     setOpen(false);
@@ -144,9 +211,17 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
               <div className="space-y-2">
                 <Label htmlFor="duration" className="flex items-center gap-2">
                   <Timer className="h-4 w-4 text-primary" />
-                  Tempo de duração (min)
+                  Tempo de duração
                 </Label>
-                <Input id="duration" type="number" min={0} value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value === "" ? "" : Number(e.target.value))} className="rounded-xl" />
+                <Input
+                  id="duration"
+                  type="text"
+                  placeholder="digite em minutos ou HH:MM"
+                  value={durationInput}
+                  onChange={(e) => setDurationInput(e.target.value)}
+                  onBlur={handleDurationBlur}
+                  className="rounded-xl"
+                />
               </div>
 
               <div className="space-y-2">

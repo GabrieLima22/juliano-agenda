@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -37,12 +37,12 @@ All colors MUST be HSL.
     --ring: 262.1 83.3% 57.8%;
 
     --radius: 1rem;
-    
+
     /* Gradient colors */
     --gradient-purple: 262.1 83.3% 57.8%;
     --gradient-blue: 217.2 91.2% 59.8%;
     --gradient-green: 142.1 76.2% 36.3%;
-    
+
     /* iOS-style effects */
     --blur-glass: blur(12px);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -95,6 +95,16 @@ All colors MUST be HSL.
     --input: 240 3.7% 15.9%;
     --ring: 262.1 83.3% 57.8%;
   }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  #root {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 }
 
 @layer base {
@@ -104,7 +114,7 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
-    background: linear-gradient(135deg, 
+    background: linear-gradient(135deg,
       hsl(var(--background)) 0%,
       hsla(var(--gradient-purple), 0.03) 25%,
       hsla(var(--gradient-blue), 0.03) 50%,
@@ -122,34 +132,34 @@ All colors MUST be HSL.
     -webkit-backdrop-filter: var(--blur-glass);
     border: 1px solid rgba(255, 255, 255, 0.18);
   }
-  
+
   .gradient-primary {
-    background: linear-gradient(135deg, 
-      hsl(var(--gradient-purple)) 0%, 
-      hsl(var(--gradient-blue)) 50%, 
+    background: linear-gradient(135deg,
+      hsl(var(--gradient-purple)) 0%,
+      hsl(var(--gradient-blue)) 50%,
       hsl(var(--gradient-green)) 100%
     );
   }
-  
+
   .gradient-text {
-    background: linear-gradient(135deg, 
-      hsl(var(--gradient-purple)) 0%, 
-      hsl(var(--gradient-blue)) 50%, 
+    background: linear-gradient(135deg,
+      hsl(var(--gradient-purple)) 0%,
+      hsl(var(--gradient-blue)) 50%,
       hsl(var(--gradient-green)) 100%
     );
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  
+
   .animate-smooth {
     transition: var(--transition-smooth);
   }
-  
+
   .shadow-elegant {
     box-shadow: var(--shadow-elegant);
   }
-  
+
   .shadow-glass {
     box-shadow: var(--shadow-glass);
   }

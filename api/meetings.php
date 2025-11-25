@@ -20,7 +20,7 @@ function format_meeting_row(array $row): array {
     }
 
     $meetingType = $row['meeting_type'] ?? 'presencial';
-    if (!in_array($meetingType, ['presencial', 'zoom', 'meet'], true)) {
+    if (!in_array($meetingType, ['presencial', 'zoom', 'meet', 'externa'], true)) {
         $meetingType = 'presencial';
     }
 
@@ -81,7 +81,7 @@ if ($method === 'POST') {
     }
     $duration = isset($data['durationMinutes']) ? (int)$data['durationMinutes'] : null;
     $meetingType = isset($data['meetingType']) ? (string)$data['meetingType'] : 'presencial';
-    if (!in_array($meetingType, ['presencial','zoom','meet'], true)) { $meetingType = 'presencial'; }
+    if (!in_array($meetingType, ['presencial','zoom','meet','externa'], true)) { $meetingType = 'presencial'; }
     $onlineLink = isset($data['onlineLink']) ? trim((string)$data['onlineLink']) : null;
     $createdAt = now_datetime();
     $status = 'pending';
@@ -101,12 +101,12 @@ if ($method === 'POST') {
         }
     }
 
-    if ($meetingType !== 'presencial' && ($onlineLink === null || $onlineLink === '')) {
+    if (!in_array($meetingType, ['presencial', 'externa'], true) && ($onlineLink === null || $onlineLink === '')) {
         send_json(['error' => 'Online link is required for virtual meetings'], 400);
         exit;
     }
 
-    if ($meetingType === 'presencial') {
+    if (in_array($meetingType, ['presencial', 'externa'], true)) {
         $onlineLink = null;
     }
 
@@ -255,14 +255,14 @@ if ($method === 'PATCH') {
     }
 
     $currentType = $existing['meeting_type'] ?? 'presencial';
-    if (!in_array($currentType, ['presencial', 'zoom', 'meet'], true)) {
+    if (!in_array($currentType, ['presencial', 'zoom', 'meet', 'externa'], true)) {
         $currentType = 'presencial';
     }
     $meetingType = $currentType;
     $updateMeetingType = false;
     if (array_key_exists('meetingType', $data)) {
         $candidate = strtolower(trim((string)$data['meetingType']));
-        if (!in_array($candidate, ['presencial', 'zoom', 'meet'], true)) {
+        if (!in_array($candidate, ['presencial', 'zoom', 'meet', 'externa'], true)) {
             $candidate = 'presencial';
         }
         $meetingType = $candidate;
@@ -282,12 +282,12 @@ if ($method === 'PATCH') {
         $updateOnlineLink = true;
     }
 
-    if ($meetingType !== 'presencial' && ($onlineLink === null || $onlineLink === '')) {
+    if (!in_array($meetingType, ['presencial', 'externa'], true) && ($onlineLink === null || $onlineLink === '')) {
         send_json(['error' => 'Online link is required for virtual meetings'], 400);
         exit;
     }
 
-    if ($meetingType === 'presencial') {
+    if (in_array($meetingType, ['presencial', 'externa'], true)) {
         $onlineLink = null;
         $updateOnlineLink = true;
     }

@@ -47,7 +47,7 @@ export const MeetingDetailsDialog = ({
   const [participants, setParticipants] = useState("");
   const [description, setDescription] = useState("");
   const [durationInput, setDurationInput] = useState("");
-  const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet">("presencial");
+  const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet" | "externa">("presencial");
   const [onlineLink, setOnlineLink] = useState("");
   const [status, setStatus] = useState<MeetingStatus>("pending");
 
@@ -102,7 +102,7 @@ export const MeetingDetailsDialog = ({
       alert("Título, data e horário são obrigatórios.");
       return;
     }
-    if (meetingType !== "presencial" && !onlineLink.trim()) {
+    if (meetingType !== "presencial" && meetingType !== "externa" && !onlineLink.trim()) {
       // eslint-disable-next-line no-alert
       alert("Informe o link da reunião para reuniões online.");
       return;
@@ -129,7 +129,7 @@ export const MeetingDetailsDialog = ({
       description: description.trim() ? description.trim() : null,
       durationMinutes: parsedDuration ? parsedDuration.minutes : null,
       meetingType,
-      onlineLink: meetingType === "presencial" ? null : onlineLink.trim(),
+      onlineLink: meetingType === "presencial" || meetingType === "externa" ? null : onlineLink.trim(),
       status,
     };
 
@@ -273,21 +273,22 @@ export const MeetingDetailsDialog = ({
                   <SelectTrigger id="meeting-type" className="rounded-xl">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="presencial">Presencial</SelectItem>
-                    <SelectItem value="zoom">Zoom</SelectItem>
-                    <SelectItem value="meet">Google Meet</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <SelectContent>
+                  <SelectItem value="presencial">Presencial</SelectItem>
+                  <SelectItem value="zoom">Zoom</SelectItem>
+                  <SelectItem value="meet">Google Meet</SelectItem>
+                  <SelectItem value="externa">Reunião Externa</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
 
-            {meetingType !== "presencial" && (
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="meeting-link" className="flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4 text-primary" />
-                  Link da reunião
-                </Label>
+          {meetingType !== "presencial" && meetingType !== "externa" && (
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="meeting-link" className="flex items-center gap-2">
+                <LinkIcon className="h-4 w-4 text-primary" />
+                Link da reunião
+              </Label>
                 <Input
                   id="meeting-link"
                   type="url"
@@ -295,7 +296,7 @@ export const MeetingDetailsDialog = ({
                   onChange={(e) => setOnlineLink(e.target.value)}
                   placeholder="https://..."
                   className="rounded-xl"
-                  required={meetingType !== "presencial"}
+                  required={meetingType !== "presencial" && meetingType !== "externa"}
                 />
               </div>
             )}

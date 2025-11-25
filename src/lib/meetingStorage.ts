@@ -78,7 +78,7 @@ export interface MeetingUpdatePayload {
   participants?: string[];
   description?: string | null;
   durationMinutes?: number | null;
-  meetingType?: "presencial" | "zoom" | "meet";
+  meetingType?: "presencial" | "zoom" | "meet" | "externa";
   onlineLink?: string | null;
   status?: Meeting["status"];
 }

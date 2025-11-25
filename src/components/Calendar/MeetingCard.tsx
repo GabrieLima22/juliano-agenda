@@ -60,9 +60,19 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
         )}
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {meeting.meetingType === "presencial" ? <MapPin className="h-4 w-4" /> : <Video className="h-4 w-4" />}
-          <span className="capitalize">{meeting.meetingType === "meet" ? "Google Meet" : meeting.meetingType || "Presencial"}</span>
-          {meeting.meetingType !== "presencial" && meeting.onlineLink && (
+          {meeting.meetingType === "presencial" || meeting.meetingType === "externa" ? (
+            <MapPin className="h-4 w-4" />
+          ) : (
+            <Video className="h-4 w-4" />
+          )}
+          <span className="capitalize">
+            {meeting.meetingType === "meet"
+              ? "Google Meet"
+              : meeting.meetingType === "externa"
+              ? "Reunião Externa"
+              : meeting.meetingType || "Presencial"}
+          </span>
+          {meeting.meetingType !== "presencial" && meeting.meetingType !== "externa" && meeting.onlineLink && (
             <a
               href={meeting.onlineLink}
               target="_blank"

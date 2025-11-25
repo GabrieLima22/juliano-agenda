@@ -24,7 +24,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
   const [participants, setParticipants] = useState("");
   const [description, setDescription] = useState("");
   const [durationInput, setDurationInput] = useState("");
-  const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet">("presencial");
+  const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet" | "externa">("presencial");
   const [onlineLink, setOnlineLink] = useState("");
 
   const handleDurationBlur = () => {
@@ -47,7 +47,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    if (meetingType !== "presencial" && !onlineLink) {
+    if (meetingType !== "presencial" && meetingType !== "externa" && !onlineLink) {
       toast.error("Informe o link da reunião");
       return;
     }
@@ -72,7 +72,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       description,
       durationMinutes: parsedDuration?.minutes,
       meetingType,
-      onlineLink: meetingType === "presencial" ? null : onlineLink || null,
+      onlineLink: meetingType === "presencial" || meetingType === "externa" ? null : onlineLink || null,
       createdAt: new Date().toISOString(),
       status: "pending",
     };
@@ -190,12 +190,13 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                     <SelectItem value="presencial">Presencial</SelectItem>
                     <SelectItem value="zoom">Zoom</SelectItem>
                     <SelectItem value="meet">Google Meet</SelectItem>
+                    <SelectItem value="externa">Reunião Externa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {meetingType !== "presencial" && (
+            {meetingType !== "presencial" && meetingType !== "externa" && (
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="onlineLink" className="flex items-center gap-2">
                   <LinkIcon className="h-4 w-4 text-primary" />

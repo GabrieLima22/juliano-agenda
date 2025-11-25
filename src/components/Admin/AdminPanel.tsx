@@ -89,16 +89,20 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                     )}
 
                     <div className="flex items-center gap-2 text-sm">
-                      {meeting.meetingType === "presencial" ? (
+                      {meeting.meetingType === "presencial" || meeting.meetingType === "externa" ? (
                         <MapPin className="h-4 w-4 text-primary" />
                       ) : (
                         <Video className="h-4 w-4 text-primary" />
                       )}
                       <span className="text-muted-foreground">Tipo:</span>
                       <span className="font-medium capitalize">
-                        {meeting.meetingType === "meet" ? "Google Meet" : meeting.meetingType || "Presencial"}
+                        {meeting.meetingType === "meet"
+                          ? "Google Meet"
+                          : meeting.meetingType === "externa"
+                          ? "Reunião Externa"
+                          : meeting.meetingType || "Presencial"}
                       </span>
-                      {meeting.meetingType !== "presencial" && meeting.onlineLink && (
+                      {meeting.meetingType !== "presencial" && meeting.meetingType !== "externa" && meeting.onlineLink && (
                         <a
                           href={meeting.onlineLink}
                           target="_blank"

@@ -5,6 +5,105 @@ require_once __DIR__ . '/../app/db.php';
 setup_cors();
 start_session();
 
+function allowed_meeting_types(): array {
+    return ['presencial', 'zoom', 'meet', 'external'];
+}
+
+function normalize_meeting_type(?string $meetingType): string {
+    $meetingType = strtolower(trim((string)($meetingType ?? 'presencial')));
+    if ($meetingType === 'externa') {
+        $meetingType = 'external';
+    }
+    if (!in_array($meetingType, allowed_meeting_types(), true)) {
+        return 'presencial';
+    }
+    return $meetingType;
+}
+
+function meeting_type_requires_online_link(string $meetingType): bool {
+    return in_array($meetingType, ['zoom', 'meet'], true);
+}
+
+function get_requester_meeting_ids(): array {
+    $ids = $_SESSION['meeting_request_ids'] ?? [];
+    if (!is_array($ids)) {
+        $ids = [];
+    }
+
+    $normalized = [];
+    foreach ($ids as $id) {
+        if (is_string($id) && $id !== '') {
+            $normalized[$id] = $id;
+        }
+    }
+
+    $_SESSION['meeting_request_ids'] = array_values($normalized);
+    return $_SESSION['meeting_request_ids'];
+}
+
+function remember_requester_meeting(string $meetingId): void {
+    $ids = get_requester_meeting_ids();
+    $ids[] = $meetingId;
+    $ids = array_values(array_unique($ids));
+    if (count($ids) > 100) {
+        $ids = array_slice($ids, -100);
+    }
+    $_SESSION['meeting_request_ids'] = $ids;
+}
+
+function get_requester_pending_meetings(PDO $pdo, ?string $date = null): array {
+    $meetingIds = get_requester_meeting_ids();
+    if (empty($meetingIds)) {
+        return [];
+    }
+
+    $placeholders = [];
+    $params = [':status' => 'pending'];
+
+    foreach ($meetingIds as $index => $meetingId) {
+        $placeholder = ":id{$index}";
+        $placeholders[] = $placeholder;
+        $params[$placeholder] = $meetingId;
+    }
+
+    $sql = 'SELECT * FROM meetings WHERE status = :status AND id IN (' . implode(', ', $placeholders) . ')';
+    if ($date !== null) {
+        $sql .= ' AND date = :date';
+        $params[':date'] = $date;
+    }
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+function merge_meeting_rows(array ...$groups): array {
+    $byId = [];
+    foreach ($groups as $rows) {
+        foreach ($rows as $row) {
+            if (is_array($row) && !empty($row['id'])) {
+                $byId[$row['id']] = $row;
+            }
+        }
+    }
+    return array_values($byId);
+}
+
+function sort_meeting_rows(array $rows, bool $singleDateView): array {
+    usort($rows, static function (array $a, array $b) use ($singleDateView): int {
+        if (!$singleDateView) {
+            $dateCompare = strcmp((string)($b['date'] ?? ''), (string)($a['date'] ?? ''));
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+        }
+
+        return strcmp((string)($a['time'] ?? ''), (string)($b['time'] ?? ''));
+    });
+
+    return $rows;
+}
+
 function format_meeting_row(array $row): array {
     $participants = [];
     if (!empty($row['participants'])) {
@@ -19,10 +118,7 @@ function format_meeting_row(array $row): array {
         $duration = (int)$row['duration_minutes'];
     }
 
-    $meetingType = $row['meeting_type'] ?? 'presencial';
-    if (!in_array($meetingType, ['presencial', 'zoom', 'meet', 'externa'], true)) {
-        $meetingType = 'presencial';
-    }
+    $meetingType = normalize_meeting_type($row['meeting_type'] ?? 'presencial');
 
     return [
         'id' => $row['id'],
@@ -43,26 +139,32 @@ $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $pdo = get_pdo();
 
 if ($method === 'GET') {
-    $date = isset($_GET['date']) ? trim((string)$_GET['date']) : null; // YYYY-MM-DD
+    $date = isset($_GET['date']) ? trim((string)$_GET['date']) : null;
     $includeAll = (isset($_GET['includeAll']) && ($_GET['includeAll'] === '1' || strtolower($_GET['includeAll']) === 'true')) && is_admin();
+    $rows = [];
 
     if ($date) {
         if ($includeAll) {
             $stmt = $pdo->prepare('SELECT * FROM meetings WHERE date = :date ORDER BY time ASC');
             $stmt->execute([':date' => $date]);
+            $rows = $stmt->fetchAll();
         } else {
             $stmt = $pdo->prepare("SELECT * FROM meetings WHERE date = :date AND status = 'approved' ORDER BY time ASC");
             $stmt->execute([':date' => $date]);
+            $rows = merge_meeting_rows($stmt->fetchAll(), get_requester_pending_meetings($pdo, $date));
+            $rows = sort_meeting_rows($rows, true);
         }
     } else {
         if ($includeAll) {
             $stmt = $pdo->query('SELECT * FROM meetings ORDER BY date DESC, time ASC');
+            $rows = $stmt->fetchAll();
         } else {
             $stmt = $pdo->query("SELECT * FROM meetings WHERE status = 'approved' ORDER BY date DESC, time ASC");
+            $rows = merge_meeting_rows($stmt->fetchAll(), get_requester_pending_meetings($pdo));
+            $rows = sort_meeting_rows($rows, false);
         }
     }
 
-    $rows = $stmt->fetchAll();
     $out = array_map(static fn(array $row) => format_meeting_row($row), $rows);
     send_json($out);
     exit;
@@ -75,13 +177,12 @@ if ($method === 'POST') {
     $date = trim((string)($data['date'] ?? ''));
     $time = trim((string)($data['time'] ?? ''));
     $participantsInput = $data['participants'] ?? [];
-    $description = isset($data['description']) ? trim((string)$data['description']) : null; // usaremos como 'pauta'
+    $description = isset($data['description']) ? trim((string)$data['description']) : null;
     if ($description === '') {
         $description = null;
     }
     $duration = isset($data['durationMinutes']) ? (int)$data['durationMinutes'] : null;
-    $meetingType = isset($data['meetingType']) ? (string)$data['meetingType'] : 'presencial';
-    if (!in_array($meetingType, ['presencial','zoom','meet','externa'], true)) { $meetingType = 'presencial'; }
+    $meetingType = normalize_meeting_type(isset($data['meetingType']) ? (string)$data['meetingType'] : 'presencial');
     $onlineLink = isset($data['onlineLink']) ? trim((string)$data['onlineLink']) : null;
     $createdAt = now_datetime();
     $status = 'pending';
@@ -101,12 +202,12 @@ if ($method === 'POST') {
         }
     }
 
-    if (!in_array($meetingType, ['presencial', 'externa'], true) && ($onlineLink === null || $onlineLink === '')) {
+    if (meeting_type_requires_online_link($meetingType) && ($onlineLink === null || $onlineLink === '')) {
         send_json(['error' => 'Online link is required for virtual meetings'], 400);
         exit;
     }
 
-    if (in_array($meetingType, ['presencial', 'externa'], true)) {
+    if (!meeting_type_requires_online_link($meetingType)) {
         $onlineLink = null;
     }
 
@@ -125,6 +226,8 @@ if ($method === 'POST') {
         ':created_at' => $createdAt,
         ':status' => $status,
     ]);
+
+    remember_requester_meeting($id);
 
     send_json([
         'id' => $id,
@@ -254,18 +357,11 @@ if ($method === 'PATCH') {
         $params[':duration_minutes'] = $duration;
     }
 
-    $currentType = $existing['meeting_type'] ?? 'presencial';
-    if (!in_array($currentType, ['presencial', 'zoom', 'meet', 'externa'], true)) {
-        $currentType = 'presencial';
-    }
+    $currentType = normalize_meeting_type($existing['meeting_type'] ?? 'presencial');
     $meetingType = $currentType;
     $updateMeetingType = false;
     if (array_key_exists('meetingType', $data)) {
-        $candidate = strtolower(trim((string)$data['meetingType']));
-        if (!in_array($candidate, ['presencial', 'zoom', 'meet', 'externa'], true)) {
-            $candidate = 'presencial';
-        }
-        $meetingType = $candidate;
+        $meetingType = normalize_meeting_type((string)$data['meetingType']);
         $updateMeetingType = true;
     }
 
@@ -282,12 +378,12 @@ if ($method === 'PATCH') {
         $updateOnlineLink = true;
     }
 
-    if (!in_array($meetingType, ['presencial', 'externa'], true) && ($onlineLink === null || $onlineLink === '')) {
+    if (meeting_type_requires_online_link($meetingType) && ($onlineLink === null || $onlineLink === '')) {
         send_json(['error' => 'Online link is required for virtual meetings'], 400);
         exit;
     }
 
-    if (in_array($meetingType, ['presencial', 'externa'], true)) {
+    if (!meeting_type_requires_online_link($meetingType)) {
         $onlineLink = null;
         $updateOnlineLink = true;
     }

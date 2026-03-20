@@ -273,7 +273,7 @@ const Index = () => {
               <div className="lg:col-span-2">
                 <CalendarGrid
                   currentMonth={currentMonth}
-                  meetings={meetings.filter((m) => isAdmin || m.status === "approved")}
+                  meetings={meetings}
                   selectedDate={selectedDate}
                   onDateClick={handleDateClick}
                 />

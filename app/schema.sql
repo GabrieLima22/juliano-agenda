@@ -36,7 +36,7 @@ CREATE TABLE `meetings` (
   `description` text DEFAULT NULL,
   `agenda` text DEFAULT NULL,
   `duration_minutes` int(11) DEFAULT NULL,
-  `meeting_type` enum('presencial','zoom','meet') NOT NULL DEFAULT 'presencial',
+  `meeting_type` enum('presencial','zoom','meet','external') NOT NULL DEFAULT 'presencial',
   `online_link` varchar(500) DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending'

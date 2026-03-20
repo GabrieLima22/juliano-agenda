@@ -1,4 +1,4 @@
-import { Meeting } from "@/types/meeting";
+import { Meeting, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
 import { Clock, Users, Timer, Video, MapPin, Link as LinkIcon } from "lucide-react";
 import { formatDuration } from "@/lib/duration";
 
@@ -11,6 +11,8 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
   const isInteractive = typeof onSelect === "function";
   const isPending = meeting.status === "pending";
   const formattedTime = meeting.time?.slice(0, 5) ?? meeting.time;
+  const meetingType = meeting.meetingType ?? "presencial";
+  const hasOnlineLink = meetingTypeRequiresOnlineLink(meetingType) && Boolean(meeting.onlineLink);
 
   return (
     <div
@@ -60,21 +62,11 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
         )}
 
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {meeting.meetingType === "presencial" || meeting.meetingType === "externa" ? (
-            <MapPin className="h-4 w-4" />
-          ) : (
-            <Video className="h-4 w-4" />
-          )}
-          <span className="capitalize">
-            {meeting.meetingType === "meet"
-              ? "Google Meet"
-              : meeting.meetingType === "externa"
-              ? "Reunião Externa"
-              : meeting.meetingType || "Presencial"}
-          </span>
-          {meeting.meetingType !== "presencial" && meeting.meetingType !== "externa" && meeting.onlineLink && (
+          {meetingTypeRequiresOnlineLink(meetingType) ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
+          <span>{getMeetingTypeLabel(meetingType)}</span>
+          {hasOnlineLink && (
             <a
-              href={meeting.onlineLink}
+              href={meeting.onlineLink!}
               target="_blank"
               rel="noreferrer"
               className="ml-1 inline-flex items-center gap-1 text-primary hover:underline"

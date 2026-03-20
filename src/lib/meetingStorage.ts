@@ -1,4 +1,4 @@
-import { Meeting } from "@/types/meeting";
+import { Meeting, MeetingType } from "@/types/meeting";
 
 const API_BASE: string =
   (import.meta as any).env?.VITE_API_BASE ||
@@ -40,7 +40,7 @@ export const saveMeeting = async (meeting: Meeting): Promise<Meeting> => {
     participants: meeting.participants,
     description: meeting.description ?? null,
     durationMinutes: meeting.durationMinutes ?? null,
-    meetingType: meeting.meetingType ?? 'presencial',
+    meetingType: meeting.meetingType ?? "presencial",
     onlineLink: meeting.onlineLink ?? null,
   };
   const created = await request<Meeting>("meetings.php", { method: "POST", json: payload });
@@ -78,7 +78,7 @@ export interface MeetingUpdatePayload {
   participants?: string[];
   description?: string | null;
   durationMinutes?: number | null;
-  meetingType?: "presencial" | "zoom" | "meet" | "externa";
+  meetingType?: MeetingType;
   onlineLink?: string | null;
   status?: Meeting["status"];
 }

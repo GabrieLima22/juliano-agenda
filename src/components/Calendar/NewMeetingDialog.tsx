@@ -6,14 +6,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Calendar, Clock, Users, FileText, Timer, Video, Link as LinkIcon, X } from "lucide-react";
-import { Meeting } from "@/types/meeting";
+import { Meeting, MeetingType, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { parseDurationInput } from "@/lib/duration";
 
 interface NewMeetingDialogProps {
   selectedDate: Date | null;
-  onSave: (meeting: Meeting) => void;
+  onSave: (meeting: Meeting) => Promise<void> | void;
 }
 
 export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps) => {
@@ -24,8 +24,10 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
   const [participants, setParticipants] = useState("");
   const [description, setDescription] = useState("");
   const [durationInput, setDurationInput] = useState("");
-  const [meetingType, setMeetingType] = useState<"presencial" | "zoom" | "meet" | "externa">("presencial");
+  const [meetingType, setMeetingType] = useState<MeetingType>("presencial");
   const [onlineLink, setOnlineLink] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const requiresOnlineLink = meetingTypeRequiresOnlineLink(meetingType);
 
   const handleDurationBlur = () => {
     if (!durationInput.trim()) {
@@ -40,14 +42,14 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!title || !date || !time) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
-    if (meetingType !== "presencial" && meetingType !== "externa" && !onlineLink) {
+    if (requiresOnlineLink && !onlineLink.trim()) {
       toast.error("Informe o link da reunião");
       return;
     }
@@ -72,25 +74,32 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       description,
       durationMinutes: parsedDuration?.minutes,
       meetingType,
-      onlineLink: meetingType === "presencial" || meetingType === "externa" ? null : onlineLink || null,
+      onlineLink: requiresOnlineLink ? onlineLink.trim() || null : null,
       createdAt: new Date().toISOString(),
       status: "pending",
     };
 
-    onSave(meeting);
+    setIsSubmitting(true);
+    try {
+      await onSave(meeting);
 
-    // Reset
-    setTitle("");
-    setDate("");
-    setTime("");
-    setParticipants("");
-    setDescription("");
-    setDurationInput("");
-    setMeetingType("presencial");
-    setOnlineLink("");
-    setOpen(false);
+      setTitle("");
+      setDate("");
+      setTime("");
+      setParticipants("");
+      setDescription("");
+      setDurationInput("");
+      setMeetingType("presencial");
+      setOnlineLink("");
+      setOpen(false);
 
-    toast.success("Solicitação enviada! Aguarde aprovação.");
+      toast.success("Solicitação enviada! Aguarde aprovação.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao salvar a reunião.";
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -182,7 +191,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                   <Video className="h-4 w-4 text-primary" />
                   Tipo de reunião
                 </Label>
-                <Select value={meetingType} onValueChange={(v) => setMeetingType(v as any)}>
+                <Select value={meetingType} onValueChange={(value) => setMeetingType(value as MeetingType)}>
                   <SelectTrigger className="rounded-xl">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -190,27 +199,36 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                     <SelectItem value="presencial">Presencial</SelectItem>
                     <SelectItem value="zoom">Zoom</SelectItem>
                     <SelectItem value="meet">Google Meet</SelectItem>
-                    <SelectItem value="externa">Reunião Externa</SelectItem>
+                    <SelectItem value="external">Reunião Externa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {meetingType !== "presencial" && meetingType !== "externa" && (
+            {requiresOnlineLink && (
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="onlineLink" className="flex items-center gap-2">
                   <LinkIcon className="h-4 w-4 text-primary" />
-                  Link da reunião ({meetingType.toUpperCase()})
+                  Link da reunião ({getMeetingTypeLabel(meetingType)})
                 </Label>
-                <Input id="onlineLink" type="url" value={onlineLink} onChange={(e) => setOnlineLink(e.target.value)} placeholder={`Cole o link do ${meetingType}`} className="rounded-xl" />
+                <Input
+                  id="onlineLink"
+                  type="url"
+                  value={onlineLink}
+                  onChange={(e) => setOnlineLink(e.target.value)}
+                  placeholder={`Cole o link do ${getMeetingTypeLabel(meetingType)}`}
+                  className="rounded-xl"
+                />
               </div>
             )}
           </div>
           <DialogFooter className="sticky bottom-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-t border-border/50 px-6 py-4 gap-3 sm:gap-4">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="rounded-xl">Cancelar</Button>
+              <Button type="button" variant="outline" className="rounded-xl" disabled={isSubmitting}>Cancelar</Button>
             </DialogClose>
-            <Button type="submit" className="gradient-primary text-white shadow-elegant hover:scale-105 animate-smooth font-semibold rounded-xl">Agendar</Button>
+            <Button type="submit" disabled={isSubmitting} className="gradient-primary text-white shadow-elegant hover:scale-105 animate-smooth font-semibold rounded-xl">
+              {isSubmitting ? "Salvando..." : "Agendar"}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

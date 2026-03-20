@@ -12,6 +12,8 @@ RUN npm run build
 FROM php:8.2-apache
 RUN a2dismod mpm_event mpm_worker || true \
  && a2enmod mpm_prefork rewrite \
+ && echo "ServerName localhost" > /etc/apache2/conf-available/servername.conf \
+ && a2enconf servername \
  && docker-php-ext-install pdo pdo_mysql
 WORKDIR /var/www/html
 
@@ -20,6 +22,8 @@ COPY --from=build /app/dist/ ./
 COPY --from=build /app/api/ ./api/
 COPY --from=build /app/app/ ./app/
 COPY --from=build /app/public/ ./public/
+COPY docker/apache-start.sh /usr/local/bin/apache-start.sh
+RUN chmod +x /usr/local/bin/apache-start.sh
 
 # SPA fallback and basic hardening
 COPY <<'HTACCESS' /var/www/html/.htaccess
@@ -38,5 +42,5 @@ COPY <<'HTACCESS' /var/www/html/.htaccess
 HTACCESS
 
 EXPOSE 80
-CMD ["apache2-foreground"]
+CMD ["/usr/local/bin/apache-start.sh"]
 

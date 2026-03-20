@@ -1,6 +1,7 @@
 import { Meeting, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
 import { Clock, Users, Timer, Video, MapPin, Link as LinkIcon } from "lucide-react";
 import { formatDuration } from "@/lib/duration";
+import { cn } from "@/lib/utils";
 
 interface MeetingCardProps {
   meeting: Meeting;
@@ -10,9 +11,24 @@ interface MeetingCardProps {
 export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
   const isInteractive = typeof onSelect === "function";
   const isPending = meeting.status === "pending";
+  const isRejected = meeting.status === "rejected";
   const formattedTime = meeting.time?.slice(0, 5) ?? meeting.time;
   const meetingType = meeting.meetingType ?? "presencial";
   const hasOnlineLink = meetingTypeRequiresOnlineLink(meetingType) && Boolean(meeting.onlineLink);
+  const statusBadge = isPending
+    ? {
+        label: "Aguardando confirma\u00E7\u00E3o",
+        className:
+          "border-amber-300 bg-gradient-to-r from-amber-100 via-amber-50 to-white text-amber-700",
+        dotClassName: "bg-amber-500",
+      }
+    : isRejected
+      ? {
+          label: "Recusada",
+          className: "border-red-300 bg-gradient-to-r from-red-100 via-red-50 to-white text-red-700",
+          dotClassName: "bg-red-500",
+        }
+      : null;
 
   return (
     <div
@@ -29,21 +45,25 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
             }
           : undefined
       }
-      className={[
-        "glass-effect rounded-2xl p-4 shadow-glass animate-fade-in-up animate-smooth transition-transform",
-        isInteractive
-          ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 hover:scale-[1.02] hover:bg-primary/5 hover:shadow-xl"
-          : "",
-      ]
-        .join(" ")
-        .trim()}
+      className={cn(
+        "glass-effect rounded-2xl border p-4 shadow-glass animate-fade-in-up animate-smooth transition-transform",
+        isRejected ? "border-red-500/40 bg-red-500/5" : "border-border/50",
+        isPending && "border-amber-400/40 bg-amber-500/5",
+        isInteractive &&
+          "cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2 hover:scale-[1.02] hover:bg-primary/5 hover:shadow-xl",
+      )}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <h3 className="font-semibold text-lg gradient-text">{meeting.title}</h3>
-        {isPending && (
-          <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-gradient-to-r from-amber-100 via-amber-50 to-white px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-700 shadow-sm">
-            <span className="block h-2 w-2 rounded-full bg-amber-500" />
-            Aguardando confirmação
+        {statusBadge && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide shadow-sm",
+              statusBadge.className,
+            )}
+          >
+            <span className={cn("block h-2 w-2 rounded-full", statusBadge.dotClassName)} />
+            {statusBadge.label}
           </span>
         )}
       </div>
@@ -70,7 +90,7 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
               target="_blank"
               rel="noreferrer"
               className="ml-1 inline-flex items-center gap-1 text-primary hover:underline"
-              title="Abrir link da reunião"
+              title="Abrir link da reuni\u00E3o"
             >
               <LinkIcon className="h-3.5 w-3.5" />
               <span>Link</span>

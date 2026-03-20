@@ -9,7 +9,7 @@ interface CalendarGridProps {
   onDateClick: (date: Date) => void;
 }
 
-const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "S\u00E1b"];
 
 export const CalendarGrid = ({
   currentMonth,
@@ -26,7 +26,7 @@ export const CalendarGrid = ({
 
   const getMeetingCountForDate = (date: Date) => {
     const dateStr = date.toISOString().split("T")[0];
-    return meetings.filter((meeting) => meeting.date === dateStr).length;
+    return meetings.filter((meeting) => meeting.date === dateStr && meeting.status !== "rejected").length;
   };
 
   const chipClass = (count: number, selected: boolean) => {
@@ -69,7 +69,6 @@ export const CalendarGrid = ({
 
   return (
     <div className="glass-effect rounded-3xl p-4 sm:p-6 shadow-glass animate-fade-in" translate="no" lang="pt-BR">
-      {/* Week days header */}
       <div className="grid grid-cols-7 gap-2 mb-4 text-xs sm:text-sm">
         {weekDays.map((day) => (
           <div
@@ -81,7 +80,6 @@ export const CalendarGrid = ({
         ))}
       </div>
 
-      {/* Calendar days */}
       <div className="grid grid-cols-7 gap-2">
         {dateRange.map((date, i) => {
           const isCurrentMonth = isSameMonth(date, currentMonth);
@@ -107,9 +105,11 @@ export const CalendarGrid = ({
               <span className="flex items-center justify-center h-full">
                 {date.getDate()}
               </span>
-              <span className={chipClass(meetingCount, Boolean(isSelected))}>
-                <span className="hidden sm:inline">{meetingCount}</span>
-              </span>
+              {meetingCount > 0 && (
+                <span className={chipClass(meetingCount, Boolean(isSelected))}>
+                  <span className="hidden sm:inline">{meetingCount}</span>
+                </span>
+              )}
             </button>
           );
         })}
@@ -117,5 +117,3 @@ export const CalendarGrid = ({
     </div>
   );
 };
-
-

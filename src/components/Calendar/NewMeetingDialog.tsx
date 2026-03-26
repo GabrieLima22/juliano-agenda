@@ -10,6 +10,7 @@ import { Meeting, MeetingType, getMeetingTypeLabel, meetingTypeRequiresOnlineLin
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { parseDurationInput } from "@/lib/duration";
+import { generateClientId } from "@/lib/id";
 
 interface NewMeetingDialogProps {
   selectedDate: Date | null;
@@ -66,7 +67,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       .filter((p) => p.length > 0);
 
     const meeting: Meeting = {
-      id: crypto.randomUUID(),
+      id: generateClientId(),
       title,
       date,
       time,

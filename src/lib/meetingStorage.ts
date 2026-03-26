@@ -1,19 +1,20 @@
 import { Meeting, MeetingType } from "@/types/meeting";
+import { resolveApiBase } from "@/lib/runtime";
 
-const API_BASE: string =
-  (import.meta as any).env?.VITE_API_BASE ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost/juliano-agenda/api"
-    : "/api");
+const API_BASE = resolveApiBase();
 
-type FetchOptions = RequestInit & { json?: any };
+type FetchOptions = Omit<RequestInit, "body"> & { json?: unknown };
 
-async function request<T = any>(path: string, opts: FetchOptions = {}): Promise<T> {
+async function request<T>(path: string, opts: FetchOptions = {}): Promise<T> {
   const url = `${API_BASE}/${path}`;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers = new Headers(opts.headers);
+  if (opts.json !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const init: RequestInit = {
     method: opts.method || "GET",
-    headers: { ...headers, ...(opts.headers as any) },
+    headers,
     credentials: "include",
   };
   if (opts.json !== undefined) {
@@ -28,8 +29,7 @@ async function request<T = any>(path: string, opts: FetchOptions = {}): Promise<
 }
 
 export const getMeetings = async (): Promise<Meeting[]> => {
-  const rows = await request<any[]>("meetings.php?includeAll=true");
-  return rows as Meeting[];
+  return request<Meeting[]>("meetings.php?includeAll=true");
 };
 
 export const saveMeeting = async (meeting: Meeting): Promise<Meeting> => {
@@ -53,8 +53,7 @@ export const getMeetingsForDate = async (date: Date, includeAll: boolean = false
   const d = String(date.getDate()).padStart(2, "0");
   const dateStr = `${y}-${m}-${d}`; // data local, evita shift por fuso
   const url = `meetings.php?date=${encodeURIComponent(dateStr)}${includeAll ? "&includeAll=true" : ""}`;
-  const rows = await request<any[]>(url);
-  return rows as Meeting[];
+  return request<Meeting[]>(url);
 };
 
 export const getPendingMeetings = async (): Promise<Meeting[]> => {

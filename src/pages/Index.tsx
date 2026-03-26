@@ -22,6 +22,7 @@ import { addMonths, subMonths } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
+import { resolveApiBase } from "@/lib/runtime";
 
 const Index = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -37,7 +38,7 @@ const Index = () => {
   const [isSavingMeeting, setIsSavingMeeting] = useState(false);
   const [isDeletingMeeting, setIsDeletingMeeting] = useState(false);
 
-  const API_BASE: string = (import.meta as any).env?.VITE_API_BASE || "http://localhost/juliano-agenda/api";
+  const API_BASE = resolveApiBase();
 
   useEffect(() => {
     (async () => {
@@ -45,10 +46,12 @@ const Index = () => {
         const res = await fetch(`${API_BASE}/auth.php`, { credentials: "include" });
         const data = await res.json().catch(() => ({ isAdmin: false }));
         setIsAdmin(Boolean(data?.isAdmin));
-      } catch {}
+      } catch {
+        // Mantem o calendario publico mesmo se a verificacao de sessao falhar.
+      }
       await loadMeetings();
     })();
-  }, []);
+  }, [API_BASE]);
 
   useEffect(() => {
     (async () => {
@@ -109,7 +112,9 @@ const Index = () => {
   const handleLogout = async () => {
     try {
       await fetch(`${API_BASE}/auth.php?action=logout`, { method: "POST", credentials: "include" });
-    } catch {}
+    } catch {
+      // O estado local ainda deve ser limpo mesmo se o request falhar.
+    }
     setIsAdmin(false);
     setShowAdminPanel(false);
     toast.success("Você saiu do modo administrador.");

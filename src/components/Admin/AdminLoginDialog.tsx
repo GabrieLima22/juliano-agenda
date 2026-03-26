@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Lock, User } from "lucide-react";
 import { toast } from "sonner";
+import { resolveApiBase } from "@/lib/runtime";
 
 interface AdminLoginDialogProps {
   open: boolean;
@@ -16,7 +17,7 @@ export const AdminLoginDialog = ({ open, onOpenChange, onLogin }: AdminLoginDial
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const API_BASE: string = (import.meta as any).env?.VITE_API_BASE || "http://localhost/juliano-agenda/api";
+  const API_BASE = resolveApiBase();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +35,9 @@ export const AdminLoginDialog = ({ open, onOpenChange, onLogin }: AdminLoginDial
       onOpenChange(false);
       setUsername("");
       setPassword("");
-    } catch (err: any) {
-      toast.error(err?.message || "Erro ao autenticar");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao autenticar";
+      toast.error(message);
     }
   };
 

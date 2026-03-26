@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { ReactNode, useEffect, useState } from "react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,9 +23,10 @@ import { generateClientId } from "@/lib/id";
 interface NewMeetingDialogProps {
   selectedDate: Date | null;
   onSave: (meeting: Meeting) => Promise<void> | void;
+  trigger?: ReactNode;
 }
 
-export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps) => {
+export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDialogProps) => {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selectedDate ? format(selectedDate, "yyyy-MM-dd") : "");
@@ -29,6 +38,12 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
   const [onlineLink, setOnlineLink] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const requiresOnlineLink = meetingTypeRequiresOnlineLink(meetingType);
+
+  useEffect(() => {
+    if (!open) {
+      setDate(selectedDate ? format(selectedDate, "yyyy-MM-dd") : "");
+    }
+  }, [open, selectedDate]);
 
   const handleDurationBlur = () => {
     if (!durationInput.trim()) {
@@ -47,11 +62,11 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
     e.preventDefault();
 
     if (!title || !date || !time) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error("Preencha todos os campos obrigatorios");
       return;
     }
     if (requiresOnlineLink && !onlineLink.trim()) {
-      toast.error("Informe o link da reunião");
+      toast.error("Informe o link da reuniao");
       return;
     }
 
@@ -63,8 +78,8 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
 
     const participantsList = participants
       .split(",")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
+      .map((participant) => participant.trim())
+      .filter((participant) => participant.length > 0);
 
     const meeting: Meeting = {
       id: generateClientId(),
@@ -85,7 +100,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       await onSave(meeting);
 
       setTitle("");
-      setDate("");
+      setDate(selectedDate ? format(selectedDate, "yyyy-MM-dd") : "");
       setTime("");
       setParticipants("");
       setDescription("");
@@ -94,9 +109,9 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
       setOnlineLink("");
       setOpen(false);
 
-      toast.success("Solicitação enviada! Aguarde aprovação.");
+      toast.success("Solicitacao enviada! Aguarde aprovacao.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao salvar a reunião.";
+      const message = error instanceof Error ? error.message : "Erro ao salvar a reuniao.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -106,51 +121,74 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="lg"
-          className="gradient-primary text-white shadow-elegant hover:scale-105 animate-smooth font-semibold rounded-2xl px-6"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Nova Reunião
-        </Button>
+        {trigger || (
+          <Button
+            size="lg"
+            className="gradient-primary rounded-2xl px-6 font-semibold text-white shadow-elegant hover:scale-105 animate-smooth"
+          >
+            <Plus className="mr-2 h-5 w-5" />
+            Nova Reuniao
+          </Button>
+        )}
       </DialogTrigger>
 
-      <DialogContent className="bg-background border border-border/50 shadow-2xl w-[min(98vw,900px)] max-h-[92vh] overflow-hidden p-0">
-        <DialogHeader className="sticky top-0 z-10 bg-background/95 bg-gradient-to-r from-background via-primary/10 to-background backdrop-blur supports-[backdrop-filter]:bg-background/75 border-b border-border/50 px-6 py-4">
+      <DialogContent className="w-[min(98vw,900px)] max-h-[92vh] overflow-hidden border border-border/50 bg-background p-0 shadow-2xl">
+        <DialogHeader className="sticky top-0 z-10 border-b border-border/50 bg-background/95 bg-gradient-to-r from-background via-primary/10 to-background px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/75">
           <div className="absolute right-3 top-3">
             <DialogClose className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted/60 text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring">
               <X className="h-4 w-4" />
               <span className="sr-only">Fechar</span>
             </DialogClose>
           </div>
-          <DialogTitle className="text-2xl gradient-text">Agendar Reunião</DialogTitle>
+          <DialogTitle className="gradient-text text-2xl">Agendar Reuniao</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
-          <div className="px-6 py-5 pb-36 space-y-5 overflow-y-auto max-h-[calc(92vh-80px)]">
+          <div className="max-h-[calc(92vh-80px)] space-y-5 overflow-y-auto px-6 py-5 pb-36">
             <div className="space-y-2">
               <Label htmlFor="title" className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary" />
-                Título da Reunião *
+                Titulo da Reuniao *
               </Label>
-              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Reunião de planejamento" className="rounded-xl" required />
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex: Reuniao de planejamento"
+                className="rounded-xl"
+                required
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="date" className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-primary" />
                   Data *
                 </Label>
-                <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-xl" required />
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="rounded-xl"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="time" className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Horário *
+                  Horario *
                 </Label>
-                <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="rounded-xl" required />
+                <Input
+                  id="time"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="rounded-xl"
+                  required
+                />
               </div>
             </div>
 
@@ -159,7 +197,13 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                 <Users className="h-4 w-4 text-primary" />
                 Participantes
               </Label>
-              <Input id="participants" value={participants} onChange={(e) => setParticipants(e.target.value)} placeholder="Ex: João, Maria, Pedro (separados por vírgula)" className="rounded-xl" />
+              <Input
+                id="participants"
+                value={participants}
+                onChange={(e) => setParticipants(e.target.value)}
+                placeholder="Ex: Joao, Maria, Pedro"
+                className="rounded-xl"
+              />
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -167,14 +211,20 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                 <FileText className="h-4 w-4 text-primary" />
                 Pauta
               </Label>
-              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Tópicos a serem discutidos na reunião..." className="rounded-xl min-h-[96px]" />
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Topicos a serem discutidos na reuniao..."
+                className="min-h-[96px] rounded-xl"
+              />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="duration" className="flex items-center gap-2">
                   <Timer className="h-4 w-4 text-primary" />
-                  Tempo de duração
+                  Tempo de duracao
                 </Label>
                 <Input
                   id="duration"
@@ -190,7 +240,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
                   <Video className="h-4 w-4 text-primary" />
-                  Tipo de reunião
+                  Tipo de reuniao
                 </Label>
                 <Select value={meetingType} onValueChange={(value) => setMeetingType(value as MeetingType)}>
                   <SelectTrigger className="rounded-xl">
@@ -200,7 +250,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
                     <SelectItem value="presencial">Presencial</SelectItem>
                     <SelectItem value="zoom">Zoom</SelectItem>
                     <SelectItem value="meet">Google Meet</SelectItem>
-                    <SelectItem value="external">Reunião Externa</SelectItem>
+                    <SelectItem value="external">Reuniao Externa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -210,7 +260,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
               <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="onlineLink" className="flex items-center gap-2">
                   <LinkIcon className="h-4 w-4 text-primary" />
-                  Link da reunião ({getMeetingTypeLabel(meetingType)})
+                  Link da reuniao ({getMeetingTypeLabel(meetingType)})
                 </Label>
                 <Input
                   id="onlineLink"
@@ -223,11 +273,17 @@ export const NewMeetingDialog = ({ selectedDate, onSave }: NewMeetingDialogProps
               </div>
             )}
           </div>
-          <DialogFooter className="sticky bottom-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75 border-t border-border/50 px-6 py-4 gap-3 sm:gap-4">
+          <DialogFooter className="sticky bottom-0 z-10 gap-3 border-t border-border/50 bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/75 sm:gap-4">
             <DialogClose asChild>
-              <Button type="button" variant="outline" className="rounded-xl" disabled={isSubmitting}>Cancelar</Button>
+              <Button type="button" variant="outline" className="rounded-xl" disabled={isSubmitting}>
+                Cancelar
+              </Button>
             </DialogClose>
-            <Button type="submit" disabled={isSubmitting} className="gradient-primary text-white shadow-elegant hover:scale-105 animate-smooth font-semibold rounded-xl">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="gradient-primary rounded-xl font-semibold text-white shadow-elegant hover:scale-105 animate-smooth"
+            >
               {isSubmitting ? "Salvando..." : "Agendar"}
             </Button>
           </DialogFooter>

@@ -28,6 +28,16 @@ import { Meeting } from "@/types/meeting";
 
 type AdminView = "calendar" | "pending" | "recurring";
 
+const ADMIN_TABS: Array<{
+  value: AdminView;
+  label: string;
+  counterTone?: "blue" | "violet";
+}> = [
+  { value: "calendar", label: "Calendario" },
+  { value: "pending", label: "Solicitacoes", counterTone: "blue" },
+  { value: "recurring", label: "Recorrentes", counterTone: "violet" },
+];
+
 const Index = () => {
   const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -107,6 +117,11 @@ const Index = () => {
           return (a.title ?? "").localeCompare(b.title ?? "");
         }),
     [meetings],
+  );
+
+  const activeAdminTabIndex = useMemo(
+    () => ADMIN_TABS.findIndex((tab) => tab.value === adminView),
+    [adminView],
   );
 
   const selectedDateMeetings = useMemo(() => {
@@ -362,53 +377,56 @@ const Index = () => {
 
               {isAdmin && (
                 <div className="mb-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-                  <div className="flex rounded-[1.25rem] border border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(241,246,255,0.98))] p-1 shadow-[0_22px_34px_-26px_rgba(15,23,42,0.24)] backdrop-blur-xl">
-                    <button
-                      type="button"
-                      onClick={() => setAdminView("calendar")}
-                      aria-pressed={adminView === "calendar"}
-                      className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
-                        adminView === "calendar"
-                          ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
-                          : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
-                      }`}
-                    >
-                      Calendario
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAdminView("pending")}
-                      aria-pressed={adminView === "pending"}
-                      className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
-                        adminView === "pending"
-                          ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
-                          : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
-                      }`}
-                    >
-                      Solicitacoes
-                      {pendingMeetings.length > 0 && (
-                        <span className="ml-2 inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded-full border border-white/45 bg-[linear-gradient(135deg,rgba(99,102,241,1),rgba(59,130,246,1))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_20px_-14px_rgba(79,70,229,0.54)]">
-                          {pendingMeetings.length}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAdminView("recurring")}
-                      aria-pressed={adminView === "recurring"}
-                      className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
-                        adminView === "recurring"
-                          ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
-                          : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
-                      }`}
-                    >
-                      Recorrentes
-                      {recurringMeetings.length > 0 && (
-                        <span className="ml-2 inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded-full border border-white/45 bg-[linear-gradient(135deg,rgba(124,58,237,1),rgba(99,102,241,1))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_20px_-14px_rgba(109,40,217,0.54)]">
-                          {recurringMeetings.length}
-                        </span>
-                      )}
-                    </button>
+                  <div className="relative grid w-full max-w-[31rem] grid-cols-3 rounded-[1.3rem] border border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(241,246,255,0.96))] p-1 shadow-[0_22px_34px_-26px_rgba(15,23,42,0.24)] backdrop-blur-xl">
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-1 left-1 rounded-[1rem] bg-slate-950 shadow-[0_18px_34px_-22px_rgba(15,23,42,0.48)] transition-transform duration-500 motion-reduce:transition-none will-change-transform [width:calc((100%-0.5rem)/3)]"
+                      style={{
+                        transform: `translateX(${activeAdminTabIndex * 100}%)`,
+                        transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+                      }}
+                    />
+
+                    {ADMIN_TABS.map((tab) => {
+                      const count =
+                        tab.value === "pending"
+                          ? pendingMeetings.length
+                          : tab.value === "recurring"
+                            ? recurringMeetings.length
+                            : 0;
+                      const isActive = adminView === tab.value;
+                      const counterClassName =
+                        tab.counterTone === "violet"
+                          ? isActive
+                            ? "border-white/20 bg-white/12 text-white"
+                            : "border-violet-200/80 bg-violet-50/90 text-violet-600"
+                          : isActive
+                            ? "border-white/20 bg-white/12 text-white"
+                            : "border-sky-200/80 bg-sky-50/90 text-sky-600";
+
+                      return (
+                        <button
+                          key={tab.value}
+                          type="button"
+                          onClick={() => setAdminView(tab.value)}
+                          aria-pressed={isActive}
+                          className={`relative z-10 inline-flex items-center justify-center gap-2 rounded-[1rem] px-5 py-2.5 text-sm font-medium transition-[color,transform] duration-300 ease-out ${
+                            isActive
+                              ? "text-white"
+                              : "text-slate-600 hover:text-slate-900"
+                          }`}
+                        >
+                          <span className="whitespace-nowrap">{tab.label}</span>
+                          {count > 0 && (
+                            <span
+                              className={`inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold transition-[background-color,border-color,color] duration-300 ${counterClassName}`}
+                            >
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <button

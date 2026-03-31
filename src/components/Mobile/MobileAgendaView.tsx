@@ -27,6 +27,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { AdminPanel } from "@/components/Admin/AdminPanel";
 import { useMobileLiveContext } from "@/hooks/use-mobile-live-context";
+import { getMeetingsOccurringOnDate } from "@/lib/recurrence";
 import { Meeting } from "@/types/meeting";
 import { MobileMeetingCard } from "./MobileMeetingCard";
 
@@ -210,8 +211,7 @@ export const MobileAgendaView = ({
   }, [selectedDateMeetings]);
 
   const getMeetingCountForDate = (date: Date) => {
-    const dateKey = format(date, "yyyy-MM-dd");
-    return meetings.filter((meeting) => meeting.date === dateKey && meeting.status !== "rejected").length;
+    return getMeetingsOccurringOnDate(meetings, date, { approvedOnly: true }).length;
   };
 
   const handleSelectDate = (date: Date) => {

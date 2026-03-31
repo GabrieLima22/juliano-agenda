@@ -1,5 +1,7 @@
 export type MeetingType = "presencial" | "zoom" | "meet" | "external";
 
+export type RecurrenceType = "daily" | "weekly";
+
 export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   presencial: "Presencial",
   zoom: "Zoom",
@@ -23,6 +25,10 @@ export interface Meeting {
   durationMinutes?: number; // duração em minutos
   meetingType?: MeetingType;
   onlineLink?: string | null; // obrigatório quando zoom/meet
+  isRecurring?: boolean;
+  recurrenceType?: RecurrenceType | null; // 'daily' = dia do mês, 'weekly' = dia da semana
+  recurrenceDayOfMonth?: number | null; // 1-31 para tipo 'daily'
+  recurrenceDaysOfWeek?: string[] | null; // ['Seg','Ter',...] para tipo 'weekly'
   createdAt: string;
   status: "pending" | "approved" | "rejected";
 }

@@ -5,19 +5,20 @@ import {
   Calendar,
   CheckCircle,
   XCircle,
-  AlertCircle,
   Timer,
   Video,
   MapPin,
   Link as LinkIcon,
   Eye,
+  RefreshCw,
+  Inbox,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Badge } from "@/components/ui/badge";
 import { parseLocalDate } from "@/lib/utils";
 import { formatDuration } from "@/lib/duration";
+import { getRecurrenceSummary } from "@/lib/recurrence";
 
 interface AdminPanelProps {
   meetings: Meeting[];
@@ -30,139 +31,151 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
   const fmtTime = (t: string | undefined) => (t ? String(t).slice(0, 5) : "");
 
   return (
-    <div className="glass-effect rounded-3xl p-6 shadow-glass animate-fade-in">
-      <div className="flex items-center gap-3 mb-6">
-        <AlertCircle className="h-7 w-7 text-primary" />
-        <div>
-          <h2 className="text-2xl font-bold gradient-text">solicitações Pendentes</h2>
-          <p className="text-sm text-muted-foreground">
-            {meetings.length} {meetings.length === 1 ? "solicitação" : "solicitações"} aguardando aprovação
-          </p>
-        </div>
+    <div>
+      <div className="mb-5">
+        <h2 className="text-lg font-semibold text-foreground">Solicitacoes Pendentes</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {meetings.length} {meetings.length === 1 ? "solicitacao" : "solicitacoes"} aguardando
+        </p>
       </div>
 
       {meetings.length === 0 ? (
-        <div className="text-center py-12">
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4 opacity-50" />
-          <p className="text-muted-foreground text-lg">Nenhuma solicitação pendente</p>
-          <p className="text-sm text-muted-foreground mt-2">Todas as reuniões foram processadas</p>
+        <div className="rounded-xl border border-white/70 bg-white/40 p-12 text-center backdrop-blur-sm">
+          <Inbox className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Nenhuma solicitacao pendente</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Todas as reunioes foram processadas</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {meetings.map((meeting) => {
             const meetingType = meeting.meetingType ?? "presencial";
             const hasOnlineLink = meetingTypeRequiresOnlineLink(meetingType) && Boolean(meeting.onlineLink);
+            const recurrenceSummary = getRecurrenceSummary(meeting);
 
             return (
               <div
                 key={meeting.id}
-                className="bg-background/50 rounded-2xl p-5 border border-border/50 hover:border-primary/30 animate-smooth"
+                className="rounded-[1.35rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,250,252,0.97))] p-5 shadow-[0_22px_34px_-30px_rgba(15,23,42,0.16)] backdrop-blur-md transition-colors hover:border-slate-300/85 hover:bg-white"
               >
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <h3 className="font-bold text-xl gradient-text">{meeting.title}</h3>
-                      <Badge variant="outline" className="ml-2 bg-yellow-500/10 text-yellow-700 border-yellow-500/20">
-                        Pendente
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-primary" />
-                        <span className="font-medium">
-                          {format(parseLocalDate(meeting.date), "dd 'de' MMMM 'de' yyyy", {
-                            locale: ptBR,
-                          })}
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1 space-y-3.5">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <h3 className="text-[1.02rem] font-semibold leading-tight text-slate-900">{meeting.title}</h3>
+                      {meeting.isRecurring && recurrenceSummary && (
+                        <span className="inline-flex items-center gap-1 shrink-0 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700">
+                          <RefreshCw className="h-3 w-3" />
+                          Recorrente
                         </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="h-4 w-4 text-primary" />
-                        <span className="font-medium">{fmtTime(meeting.time)}</span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {typeof meeting.durationMinutes === "number" && meeting.durationMinutes > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Timer className="h-4 w-4 text-primary" />
-                          <span className="text-muted-foreground">Duração:</span>
-                          <span className="font-medium">{formatDuration(meeting.durationMinutes)}</span>
-                        </div>
                       )}
-
-                      <div className="flex items-center gap-2 text-sm">
-                        {meetingTypeRequiresOnlineLink(meetingType) ? (
-                          <Video className="h-4 w-4 text-primary" />
-                        ) : (
-                          <MapPin className="h-4 w-4 text-primary" />
-                        )}
-                        <span className="text-muted-foreground">Tipo:</span>
-                        <span className="font-medium">{getMeetingTypeLabel(meetingType)}</span>
-                        {hasOnlineLink && (
-                          <a
-                            href={meeting.onlineLink!}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 inline-flex items-center gap-1 text-primary hover:underline"
-                            title="Abrir link da reunião"
-                          >
-                            <LinkIcon className="h-3.5 w-3.5" />
-                            <span>Link</span>
-                          </a>
-                        )}
-                      </div>
+                      <span className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                        Pendente
+                      </span>
                     </div>
 
-                    {meeting.participants.length > 0 && (
-                      <div className="flex items-start gap-2 text-sm">
-                        <Users className="h-4 w-4 text-primary mt-0.5" />
-                        <div>
-                          <p className="font-medium text-muted-foreground">Participantes:</p>
-                          <p className="text-foreground">{meeting.participants.join(", ")}</p>
-                        </div>
+                    <div className="flex flex-wrap gap-2.5 text-[13px] text-slate-600">
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-violet-600" />
+                        {format(parseLocalDate(meeting.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                      </span>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5">
+                        <Clock className="h-3.5 w-3.5 text-violet-600" />
+                        {fmtTime(meeting.time)}
+                      </span>
+                      {typeof meeting.durationMinutes === "number" && meeting.durationMinutes > 0 && (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5">
+                          <Timer className="h-3.5 w-3.5 text-violet-600" />
+                          {formatDuration(meeting.durationMinutes)}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5">
+                        {meetingTypeRequiresOnlineLink(meetingType) ? (
+                          <Video className="h-3.5 w-3.5 text-violet-600" />
+                        ) : (
+                          <MapPin className="h-3.5 w-3.5 text-violet-600" />
+                        )}
+                        {getMeetingTypeLabel(meetingType)}
+                      </span>
+                    </div>
+
+                    {(recurrenceSummary || meeting.participants.length > 0) && (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {recurrenceSummary && (
+                          <div className="rounded-2xl border border-violet-200/70 bg-violet-50/80 px-4 py-3">
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-500">
+                              Recorrencia
+                            </p>
+                            <div className="flex items-start gap-2 text-sm text-violet-700">
+                              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
+                              <span>{recurrenceSummary}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {meeting.participants.length > 0 && (
+                          <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+                            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                              Participantes
+                            </p>
+                            <div className="flex items-start gap-2 text-sm text-slate-600">
+                              <Users className="mt-0.5 h-4 w-4 shrink-0 text-violet-600" />
+                              <span className="line-clamp-2">{meeting.participants.join(", ")}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
+                    )}
+
+                    {hasOnlineLink && (
+                      <a
+                        href={meeting.onlineLink!}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-100"
+                      >
+                        <LinkIcon className="h-3.5 w-3.5" />
+                        Abrir link da reuniao
+                      </a>
                     )}
 
                     {meeting.description && (
-                      <div className="mt-3 pt-3 border-t border-border/50">
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                          {meeting.description}
-                        </p>
-                      </div>
+                      <p className="border-t border-border/30 pt-3 text-sm leading-6 text-slate-600">
+                        {meeting.description}
+                      </p>
                     )}
 
-                    <div className="text-xs text-muted-foreground pt-2">
-                      Solicitado em {format(new Date(meeting.createdAt), "dd/MM/yyyy 'às' HH:mm")}
-                    </div>
+                    <p className="text-xs text-slate-400">
+                      Solicitado em {format(new Date(meeting.createdAt), "dd/MM/yyyy 'as' HH:mm")}
+                    </p>
                   </div>
 
-                  <div className="flex flex-wrap md:flex-col gap-2 justify-end">
+                  <div className="flex shrink-0 flex-wrap gap-2 lg:w-[9.5rem] lg:flex-col">
                     {onOpenDetails && (
                       <Button
                         type="button"
                         variant="outline"
+                        size="sm"
                         onClick={() => onOpenDetails(meeting)}
-                        className="rounded-xl border-primary/40 text-primary hover:bg-primary/10 shadow-lg hover:scale-105 animate-smooth flex-1 md:flex-none"
+                        className="rounded-xl border-slate-200 bg-white/80 text-xs text-slate-700 hover:bg-white"
                       >
-                        <Eye className="h-4 w-4 mr-2" />
+                        <Eye className="h-3.5 w-3.5 mr-1.5" />
                         Detalhes
                       </Button>
                     )}
                     <Button
+                      size="sm"
                       onClick={() => onApprove(meeting.id)}
-                      className="bg-green-500 hover:bg-green-600 text-white shadow-lg hover:scale-105 animate-smooth rounded-xl flex-1 md:flex-none"
+                      className="rounded-xl bg-emerald-600 text-xs text-white hover:bg-emerald-700"
                     >
-                      <CheckCircle className="h-4 w-4 mr-2" />
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
                       Aprovar
                     </Button>
                     <Button
-                      onClick={() => onReject(meeting.id)}
+                      size="sm"
                       variant="outline"
-                      className="border-red-500/50 text-red-600 hover:bg-red-500/10 hover:border-red-500 shadow-lg hover:scale-105 animate-smooth rounded-xl flex-1 md:flex-none"
+                      onClick={() => onReject(meeting.id)}
+                      className="rounded-xl border-red-200 text-xs text-red-600 hover:border-red-300 hover:bg-red-50"
                     >
-                      <XCircle className="h-4 w-4 mr-2" />
+                      <XCircle className="h-3.5 w-3.5 mr-1.5" />
                       Rejeitar
                     </Button>
                   </div>

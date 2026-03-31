@@ -4,6 +4,13 @@ import { resolveApiBase } from "@/lib/runtime";
 const API_BASE = resolveApiBase();
 
 type FetchOptions = Omit<RequestInit, "body"> & { json?: unknown };
+type JsonObject = Record<string, unknown>;
+
+const isJsonObject = (value: unknown): value is JsonObject =>
+  typeof value === "object" && value !== null;
+
+const ensureMeetingArray = (value: unknown): Meeting[] =>
+  Array.isArray(value) ? value as Meeting[] : [];
 
 async function request<T>(path: string, opts: FetchOptions = {}): Promise<T> {
   const url = `${API_BASE}/${path}`;
@@ -21,19 +28,23 @@ async function request<T>(path: string, opts: FetchOptions = {}): Promise<T> {
     init.body = JSON.stringify(opts.json);
   }
   const res = await fetch(url, init);
-  const data = await res.json().catch(() => ({}));
+  const data: unknown = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data && data.error) || `HTTP ${res.status}`);
+    const message =
+      isJsonObject(data) && typeof data.error === "string"
+        ? data.error
+        : `HTTP ${res.status}`;
+    throw new Error(message);
   }
   return data as T;
 }
 
 export const getMeetings = async (): Promise<Meeting[]> => {
-  return request<Meeting[]>("meetings.php?includeAll=true");
+  return ensureMeetingArray(await request<unknown>("meetings.php?includeAll=true"));
 };
 
 export const saveMeeting = async (meeting: Meeting): Promise<Meeting> => {
-  const payload = {
+  const payload: Record<string, unknown> = {
     title: meeting.title,
     date: meeting.date,
     time: meeting.time,
@@ -42,7 +53,13 @@ export const saveMeeting = async (meeting: Meeting): Promise<Meeting> => {
     durationMinutes: meeting.durationMinutes ?? null,
     meetingType: meeting.meetingType ?? "presencial",
     onlineLink: meeting.onlineLink ?? null,
+    isRecurring: meeting.isRecurring ?? false,
   };
+  if (meeting.isRecurring) {
+    payload.recurrenceType = meeting.recurrenceType ?? null;
+    payload.recurrenceDayOfMonth = meeting.recurrenceDayOfMonth ?? null;
+    payload.recurrenceDaysOfWeek = meeting.recurrenceDaysOfWeek ?? null;
+  }
   const created = await request<Meeting>("meetings.php", { method: "POST", json: payload });
   return created;
 };
@@ -53,11 +70,11 @@ export const getMeetingsForDate = async (date: Date, includeAll: boolean = false
   const d = String(date.getDate()).padStart(2, "0");
   const dateStr = `${y}-${m}-${d}`; // data local, evita shift por fuso
   const url = `meetings.php?date=${encodeURIComponent(dateStr)}${includeAll ? "&includeAll=true" : ""}`;
-  return request<Meeting[]>(url);
+  return ensureMeetingArray(await request<unknown>(url));
 };
 
 export const getPendingMeetings = async (): Promise<Meeting[]> => {
-  const rows = await request<Meeting[]>("meetings.php?includeAll=true");
+  const rows = ensureMeetingArray(await request<unknown>("meetings.php?includeAll=true"));
   return rows.filter((m) => m.status === "pending").sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 };
 

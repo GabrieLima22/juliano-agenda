@@ -120,6 +120,17 @@ function format_meeting_row(array $row): array {
 
     $meetingType = normalize_meeting_type($row['meeting_type'] ?? 'presencial');
 
+    $isRecurring = !empty($row['is_recurring']);
+    $recurrenceType = $row['recurrence_type'] ?? null;
+    $recurrenceDayOfMonth = isset($row['recurrence_day_of_month']) ? (int)$row['recurrence_day_of_month'] : null;
+    $recurrenceDaysOfWeek = null;
+    if (!empty($row['recurrence_days_of_week'])) {
+        $decoded = json_decode($row['recurrence_days_of_week'], true);
+        if (is_array($decoded)) {
+            $recurrenceDaysOfWeek = $decoded;
+        }
+    }
+
     return [
         'id' => $row['id'],
         'title' => $row['title'],
@@ -130,9 +141,74 @@ function format_meeting_row(array $row): array {
         'durationMinutes' => $duration,
         'meetingType' => $meetingType,
         'onlineLink' => $row['online_link'] ?? null,
+        'isRecurring' => $isRecurring,
+        'recurrenceType' => $isRecurring ? $recurrenceType : null,
+        'recurrenceDayOfMonth' => $isRecurring ? $recurrenceDayOfMonth : null,
+        'recurrenceDaysOfWeek' => $isRecurring ? $recurrenceDaysOfWeek : null,
         'createdAt' => $row['created_at'],
         'status' => $row['status'],
     ];
+}
+
+/**
+ * Map day-of-week abbreviations (pt-BR) to PHP numeric day (0=Sun..6=Sat).
+ */
+function weekday_abbr_to_number(string $abbr): ?int {
+    $map = [
+        'Dom' => 0, 'Seg' => 1, 'Ter' => 2, 'Qua' => 3,
+        'Qui' => 4, 'Sex' => 5, 'Sab' => 6, 'Sáb' => 6,
+    ];
+    return $map[$abbr] ?? null;
+}
+
+/**
+ * Check if a recurring meeting matches a given date string (YYYY-MM-DD).
+ */
+function recurring_matches_date(array $row, string $dateStr): bool {
+    if (empty($row['is_recurring'])) {
+        return false;
+    }
+    $startDate = $row['date'] ?? '';
+    if ($dateStr < $startDate) {
+        return false;
+    }
+    $type = $row['recurrence_type'] ?? '';
+    if ($type === 'daily') {
+        $dayOfMonth = (int)($row['recurrence_day_of_month'] ?? 0);
+        return $dayOfMonth === (int)date('j', strtotime($dateStr));
+    }
+    if ($type === 'weekly') {
+        $daysJson = $row['recurrence_days_of_week'] ?? '[]';
+        $days = json_decode($daysJson, true);
+        if (!is_array($days)) {
+            return false;
+        }
+        $requestedDow = (int)date('w', strtotime($dateStr)); // 0=Sun
+        foreach ($days as $abbr) {
+            if (weekday_abbr_to_number($abbr) === $requestedDow) {
+                return true;
+            }
+        }
+        return false;
+    }
+    return false;
+}
+
+/**
+ * Fetch all recurring meetings that are approved (or optionally all statuses).
+ */
+function get_recurring_meetings_for_date(PDO $pdo, string $dateStr, bool $includeAll): array {
+    $statusClause = $includeAll ? '' : " AND status = 'approved'";
+    $stmt = $pdo->prepare("SELECT * FROM meetings WHERE is_recurring = 1{$statusClause}");
+    $stmt->execute();
+    $rows = $stmt->fetchAll();
+    $matches = [];
+    foreach ($rows as $row) {
+        if (recurring_matches_date($row, $dateStr)) {
+            $matches[] = $row;
+        }
+    }
+    return $matches;
 }
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
@@ -143,15 +219,31 @@ if ($method === 'GET') {
     $includeAll = (isset($_GET['includeAll']) && ($_GET['includeAll'] === '1' || strtolower($_GET['includeAll']) === 'true')) && is_admin();
     $rows = [];
 
+    $hasRecurring = has_recurring_column($pdo);
+
     if ($date) {
         if ($includeAll) {
-            $stmt = $pdo->prepare('SELECT * FROM meetings WHERE date = :date ORDER BY time ASC');
-            $stmt->execute([':date' => $date]);
-            $rows = $stmt->fetchAll();
+            if ($hasRecurring) {
+                $stmt = $pdo->prepare('SELECT * FROM meetings WHERE date = :date AND is_recurring = 0 ORDER BY time ASC');
+                $stmt->execute([':date' => $date]);
+                $rows = merge_meeting_rows($stmt->fetchAll(), get_recurring_meetings_for_date($pdo, $date, true));
+            } else {
+                $stmt = $pdo->prepare('SELECT * FROM meetings WHERE date = :date ORDER BY time ASC');
+                $stmt->execute([':date' => $date]);
+                $rows = $stmt->fetchAll();
+            }
+            $rows = sort_meeting_rows($rows, true);
         } else {
-            $stmt = $pdo->prepare("SELECT * FROM meetings WHERE date = :date AND status = 'approved' ORDER BY time ASC");
-            $stmt->execute([':date' => $date]);
-            $rows = merge_meeting_rows($stmt->fetchAll(), get_requester_pending_meetings($pdo, $date));
+            if ($hasRecurring) {
+                $stmt = $pdo->prepare("SELECT * FROM meetings WHERE date = :date AND status = 'approved' AND is_recurring = 0 ORDER BY time ASC");
+                $stmt->execute([':date' => $date]);
+                $recurringRows = get_recurring_meetings_for_date($pdo, $date, false);
+                $rows = merge_meeting_rows($stmt->fetchAll(), $recurringRows, get_requester_pending_meetings($pdo, $date));
+            } else {
+                $stmt = $pdo->prepare("SELECT * FROM meetings WHERE date = :date AND status = 'approved' ORDER BY time ASC");
+                $stmt->execute([':date' => $date]);
+                $rows = merge_meeting_rows($stmt->fetchAll(), get_requester_pending_meetings($pdo, $date));
+            }
             $rows = sort_meeting_rows($rows, true);
         }
     } else {
@@ -184,6 +276,19 @@ if ($method === 'POST') {
     $duration = isset($data['durationMinutes']) ? (int)$data['durationMinutes'] : null;
     $meetingType = normalize_meeting_type(isset($data['meetingType']) ? (string)$data['meetingType'] : 'presencial');
     $onlineLink = isset($data['onlineLink']) ? trim((string)$data['onlineLink']) : null;
+    $isRecurring = !empty($data['isRecurring']) ? 1 : 0;
+    $recurrenceType = null;
+    $recurrenceDayOfMonth = null;
+    $recurrenceDaysOfWeek = null;
+    if ($isRecurring) {
+        $recurrenceType = in_array($data['recurrenceType'] ?? '', ['daily', 'weekly'], true) ? $data['recurrenceType'] : null;
+        if ($recurrenceType === 'daily') {
+            $recurrenceDayOfMonth = isset($data['recurrenceDayOfMonth']) ? (int)$data['recurrenceDayOfMonth'] : null;
+        }
+        if ($recurrenceType === 'weekly' && isset($data['recurrenceDaysOfWeek']) && is_array($data['recurrenceDaysOfWeek'])) {
+            $recurrenceDaysOfWeek = json_encode($data['recurrenceDaysOfWeek'], JSON_UNESCAPED_UNICODE);
+        }
+    }
     $createdAt = now_datetime();
     $status = 'pending';
 
@@ -211,21 +316,45 @@ if ($method === 'POST') {
         $onlineLink = null;
     }
 
-    $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :created_at, :status)');
-    $stmt->execute([
-        ':id' => $id,
-        ':title' => $title,
-        ':date' => $date,
-        ':time' => $time,
-        ':participants' => json_encode($participants, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        ':description' => $description,
-        ':agenda' => $description,
-        ':duration_minutes' => $duration,
-        ':meeting_type' => $meetingType,
-        ':online_link' => $onlineLink,
-        ':created_at' => $createdAt,
-        ':status' => $status,
-    ]);
+    $hasRecurringCol = has_recurring_column($pdo);
+
+    if ($hasRecurringCol) {
+        $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, is_recurring, recurrence_type, recurrence_day_of_month, recurrence_days_of_week, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :is_recurring, :recurrence_type, :recurrence_day_of_month, :recurrence_days_of_week, :created_at, :status)');
+        $stmt->execute([
+            ':id' => $id,
+            ':title' => $title,
+            ':date' => $date,
+            ':time' => $time,
+            ':participants' => json_encode($participants, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ':description' => $description,
+            ':agenda' => $description,
+            ':duration_minutes' => $duration,
+            ':meeting_type' => $meetingType,
+            ':online_link' => $onlineLink,
+            ':is_recurring' => $isRecurring,
+            ':recurrence_type' => $recurrenceType,
+            ':recurrence_day_of_month' => $recurrenceDayOfMonth,
+            ':recurrence_days_of_week' => $recurrenceDaysOfWeek,
+            ':created_at' => $createdAt,
+            ':status' => $status,
+        ]);
+    } else {
+        $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :created_at, :status)');
+        $stmt->execute([
+            ':id' => $id,
+            ':title' => $title,
+            ':date' => $date,
+            ':time' => $time,
+            ':participants' => json_encode($participants, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ':description' => $description,
+            ':agenda' => $description,
+            ':duration_minutes' => $duration,
+            ':meeting_type' => $meetingType,
+            ':online_link' => $onlineLink,
+            ':created_at' => $createdAt,
+            ':status' => $status,
+        ]);
+    }
 
     remember_requester_meeting($id);
 
@@ -239,6 +368,10 @@ if ($method === 'POST') {
         'durationMinutes' => $duration,
         'meetingType' => $meetingType,
         'onlineLink' => $onlineLink,
+        'isRecurring' => (bool)$isRecurring,
+        'recurrenceType' => $recurrenceType,
+        'recurrenceDayOfMonth' => $recurrenceDayOfMonth,
+        'recurrenceDaysOfWeek' => $recurrenceDaysOfWeek ? json_decode($recurrenceDaysOfWeek, true) : null,
         'createdAt' => $createdAt,
         'status' => $status,
     ], 201);

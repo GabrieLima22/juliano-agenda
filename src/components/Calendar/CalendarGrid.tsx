@@ -1,5 +1,7 @@
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, isToday } from "date-fns";
+import { useMemo } from "react";
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, isToday } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getMeetingCountMapForInterval } from "@/lib/recurrence";
 import { Meeting } from "@/types/meeting";
 
 interface CalendarGridProps {
@@ -23,24 +25,28 @@ export const CalendarGrid = ({
   const endDate = endOfWeek(monthEnd);
 
   const dateRange = eachDayOfInterval({ start: startDate, end: endDate });
+  const approvedMeetingCounts = useMemo(
+    () => getMeetingCountMapForInterval(meetings, startDate, endDate, { approvedOnly: true }),
+    [endDate, meetings, startDate],
+  );
 
-  const getMeetingCountForDate = (date: Date) => {
-    const dateStr = date.toISOString().split("T")[0];
-    return meetings.filter((meeting) => meeting.date === dateStr && meeting.status !== "rejected").length;
-  };
-
-  const chipClass = (count: number, selected: boolean) => {
+  const chipClass = (meetingCount: number, selected: boolean) => {
     const base =
-      "absolute top-1 left-1 sm:left-auto sm:right-1 sm:top-1 flex items-center justify-center rounded-full border shadow-sm animate-smooth transition-all";
+      "absolute top-1 left-1 sm:left-auto sm:right-1 sm:top-1 flex items-center justify-center rounded-full border shadow-sm animate-smooth transition-all duration-300";
 
     const sizeClasses = selected
       ? "w-3 h-3 sm:w-auto sm:h-auto sm:min-w-[1.4rem] sm:px-1.5 sm:py-0.5"
       : "w-2.5 h-2.5 sm:w-auto sm:h-auto sm:min-w-[1.4rem] sm:px-1.5 sm:py-0.5";
 
-    const colorClasses = (bg: string, text: string, border: string, selectedBg: string, selectedText: string) =>
-      `${base} ${sizeClasses} ${selected ? `${selectedBg} ${selectedText} ${border}` : `${bg} ${text} ${border}`}`;
+    const colorClasses = (
+      bg: string,
+      text: string,
+      border: string,
+      selectedBg: string,
+      selectedText: string,
+    ) => `${base} ${sizeClasses} ${selected ? `${selectedBg} ${selectedText} ${border}` : `${bg} ${text} ${border}`}`;
 
-    if (count >= 4) {
+    if (meetingCount >= 4) {
       return colorClasses(
         "bg-red-500/90",
         "text-transparent sm:text-white",
@@ -49,7 +55,8 @@ export const CalendarGrid = ({
         "text-red-800",
       );
     }
-    if (count >= 2) {
+
+    if (meetingCount === 3) {
       return colorClasses(
         "bg-blue-500/90",
         "text-transparent sm:text-white",
@@ -58,6 +65,7 @@ export const CalendarGrid = ({
         "text-blue-800",
       );
     }
+
     return colorClasses(
       "bg-green-500/90",
       "text-transparent sm:text-white",
@@ -68,12 +76,12 @@ export const CalendarGrid = ({
   };
 
   return (
-    <div className="glass-effect rounded-3xl p-4 sm:p-6 shadow-glass animate-fade-in" translate="no" lang="pt-BR">
-      <div className="grid grid-cols-7 gap-2 mb-4 text-xs sm:text-sm">
+    <div translate="no" lang="pt-BR">
+      <div className="mb-3 grid grid-cols-7 gap-2">
         {weekDays.map((day) => (
           <div
             key={day}
-            className="text-center font-semibold text-muted-foreground py-2"
+            className="text-center text-xs font-medium text-muted-foreground py-2"
           >
             {day}
           </div>
@@ -85,7 +93,7 @@ export const CalendarGrid = ({
           const isCurrentMonth = isSameMonth(date, currentMonth);
           const isSelected = selectedDate && isSameDay(date, selectedDate);
           const isCurrentDay = isToday(date);
-          const meetingCount = getMeetingCountForDate(date);
+          const meetingCount = approvedMeetingCounts.get(format(date, "yyyy-MM-dd")) ?? 0;
 
           return (
             <button
@@ -93,13 +101,13 @@ export const CalendarGrid = ({
               onClick={() => onDateClick(date)}
               className={cn(
                 "relative aspect-square rounded-2xl p-2 text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2",
-                "hover:scale-105 hover:shadow-lg animate-smooth",
+                "transform-gpu animate-smooth",
                 isCurrentMonth
                   ? "text-foreground"
                   : "text-muted-foreground opacity-50",
-                isSelected && "bg-primary text-primary-foreground shadow-elegant scale-105",
+                isSelected && "z-10 bg-primary text-primary-foreground shadow-elegant ring-1 ring-primary/20",
                 isCurrentDay && !isSelected && "bg-accent text-accent-foreground font-bold ring-2 ring-primary ring-offset-2",
-                !isSelected && !isCurrentDay && "hover:bg-accent/50"
+                !isSelected && !isCurrentDay && "hover:-translate-y-0.5 hover:bg-accent/50 hover:shadow-lg"
               )}
             >
               <span className="flex items-center justify-center h-full">

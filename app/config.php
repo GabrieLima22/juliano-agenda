@@ -12,6 +12,8 @@ return [
         'user' => $env('DB_USER', 'root'),
         'pass' => $env('DB_PASS', ''), // XAMPP default is empty
         'charset' => 'utf8mb4',
+        'fallback_to_sqlite' => filter_var((string)$env('DB_FALLBACK_TO_SQLITE', '1'), FILTER_VALIDATE_BOOLEAN),
+        'sqlite_path' => $env('DB_SQLITE_PATH', __DIR__ . '/data/juliano_agenda.sqlite'),
     ],
     'admin' => [
         'username' => $env('ADMIN_USER', 'admin25jml'),

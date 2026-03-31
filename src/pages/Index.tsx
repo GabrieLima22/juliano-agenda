@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { addMonths, subMonths } from "date-fns";
+import { useEffect, useMemo, useState } from "react";
+import { addMonths, format, subMonths } from "date-fns";
 import { LogOut, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AdminLoginDialog } from "@/components/Admin/AdminLoginDialog";
@@ -11,18 +11,17 @@ import { CalendarHeader } from "@/components/Calendar/CalendarHeader";
 import { MeetingList } from "@/components/Calendar/MeetingList";
 import { NewMeetingDialog } from "@/components/Calendar/NewMeetingDialog";
 import { MobileAgendaView } from "@/components/Mobile/MobileAgendaView";
-import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   MeetingUpdatePayload,
   deleteMeeting,
   getMeetings,
-  getMeetingsForDate,
   getPendingMeetings,
   saveMeeting,
   updateMeeting,
   updateMeetingStatus,
 } from "@/lib/meetingStorage";
+import { getMeetingsOccurringOnDate } from "@/lib/recurrence";
 import { resolveApiBase } from "@/lib/runtime";
 import { Meeting } from "@/types/meeting";
 
@@ -31,7 +30,6 @@ const Index = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [selectedDateMeetings, setSelectedDateMeetings] = useState<Meeting[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -44,13 +42,23 @@ const Index = () => {
   const apiBase = resolveApiBase();
 
   const loadMeetings = async () => {
-    const allMeetings = await getMeetings();
-    setMeetings(allMeetings);
+    try {
+      const allMeetings = await getMeetings();
+      setMeetings(allMeetings);
+    } catch (error) {
+      console.error("Failed to load meetings", error);
+      setMeetings([]);
+    }
   };
 
   const loadPendingMeetings = async () => {
-    const pending = await getPendingMeetings();
-    setPendingMeetings(pending);
+    try {
+      const pending = await getPendingMeetings();
+      setPendingMeetings(pending);
+    } catch (error) {
+      console.error("Failed to load pending meetings", error);
+      setPendingMeetings([]);
+    }
   };
 
   useEffect(() => {
@@ -68,21 +76,49 @@ const Index = () => {
   }, [apiBase]);
 
   useEffect(() => {
-    (async () => {
-      if (!selectedDate) {
-        return;
+    if (!isAdmin) {
+      setShowAdminPanel(false);
+    }
+  }, [isAdmin]);
+
+  const selectedDateMeetings = useMemo(() => {
+    if (!selectedDate) {
+      return [];
+    }
+
+    if (isAdmin) {
+      return getMeetingsOccurringOnDate(meetings, selectedDate, {
+        includePending: true,
+        includeRejected: false,
+      });
+    }
+
+    const dateKey = format(selectedDate, "yyyy-MM-dd");
+    const approvedMeetings = getMeetingsOccurringOnDate(meetings, selectedDate, {
+      approvedOnly: true,
+    });
+    const pendingDirectMeetings = meetings.filter(
+      (meeting) => meeting.status === "pending" && meeting.date === dateKey,
+    );
+
+    return [...approvedMeetings, ...pendingDirectMeetings].sort((a, b) => {
+      const timeComparison = (a.time ?? "").localeCompare(b.time ?? "");
+      if (timeComparison !== 0) {
+        return timeComparison;
       }
 
-      const dateMeetings = await getMeetingsForDate(selectedDate, isAdmin);
-      setSelectedDateMeetings(dateMeetings);
-    })();
-  }, [selectedDate, meetings, isAdmin]);
+      return (a.title ?? "").localeCompare(b.title ?? "");
+    });
+  }, [isAdmin, meetings, selectedDate]);
 
   useEffect(() => {
     (async () => {
       if (isAdmin) {
         await loadPendingMeetings();
+        return;
       }
+
+      setPendingMeetings([]);
     })();
   }, [isAdmin, meetings]);
 
@@ -112,8 +148,10 @@ const Index = () => {
     await loadMeetings();
   };
 
-  const handleAdminLogin = () => {
+  const handleAdminLogin = async () => {
     setIsAdmin(true);
+    await loadMeetings();
+    await loadPendingMeetings();
   };
 
   const handleAdminToggleClick = () => {
@@ -133,6 +171,7 @@ const Index = () => {
 
     setIsAdmin(false);
     setShowAdminPanel(false);
+    await loadMeetings();
     toast.success("Voce saiu do modo administrador.");
   };
 
@@ -261,89 +300,131 @@ const Index = () => {
           }
         />
       ) : (
-        <div className="min-h-screen p-4 md:p-8">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-8 text-center animate-fade-in">
-              <h1 className="gradient-text mb-3 text-5xl font-bold md:text-6xl">Agenda do Juliano</h1>
-              <p className="text-lg text-muted-foreground">
-                {isAdmin ? "Painel Administrativo" : "Gerencie todas as reunioes em um so lugar"}
-              </p>
-            </div>
+        <div className="relative min-h-screen overflow-hidden">
+          <div className="pointer-events-none fixed inset-0">
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.985),rgba(245,248,252,0.96)_46%,rgba(236,241,249,0.985))]" />
+            <div className="absolute inset-0 opacity-22 [background-image:linear-gradient(to_right,rgba(148,163,184,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(148,163,184,0.06)_1px,transparent_1px)] [background-size:88px_88px] [mask-image:radial-gradient(circle_at_center,black,transparent_82%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(255,255,255,0.54),transparent_28%),radial-gradient(circle_at_82%_14%,rgba(255,255,255,0.4),transparent_24%),radial-gradient(circle_at_54%_82%,rgba(255,255,255,0.3),transparent_20%)]" />
+            <div className="absolute inset-x-[14%] bottom-10 h-px bg-gradient-to-r from-transparent via-slate-200/65 to-transparent" />
+            <div className="aurora-orb aurora-orb-emerald aurora-orb-slow -left-28 top-[-8%] h-[29rem] w-[29rem]" />
+            <div className="aurora-orb aurora-orb-sky aurora-orb-medium right-[0%] top-[8%] h-[28rem] w-[28rem]" />
+            <div className="aurora-orb aurora-orb-violet aurora-orb-medium right-[18%] bottom-[8%] h-[22rem] w-[22rem]" />
+            <div className="aurora-orb aurora-orb-teal aurora-orb-fast left-[18%] bottom-[8%] h-[16rem] w-[16rem]" />
+            <div className="absolute left-[8%] top-[18%] hidden xl:block h-[20rem] w-[20rem] aurora-ring aurora-ring-spin" />
+            <div className="absolute right-[12%] top-[18%] hidden xl:block h-[22rem] w-[22rem] aurora-ring aurora-ring-spin-reverse" />
+          </div>
 
-            {isAdmin && (
-              <div className="mb-8 flex flex-wrap justify-center gap-3 animate-fade-in sm:gap-4">
-                <NewMeetingDialog selectedDate={selectedDate} onSave={handleSaveMeeting} />
-                <Button
-                  variant={showAdminPanel ? "outline" : "default"}
-                  onClick={() => setShowAdminPanel(false)}
-                  className={!showAdminPanel ? "gradient-primary text-white shadow-elegant" : ""}
-                >
-                  Calendario
-                </Button>
-                <Button
-                  variant={showAdminPanel ? "default" : "outline"}
-                  onClick={() => setShowAdminPanel(true)}
-                  className={showAdminPanel ? "gradient-primary text-white shadow-elegant" : ""}
-                >
-                  Solicitacoes ({pendingMeetings.length})
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleLogout}
-                  className="rounded-xl border-red-500/50 text-red-600 shadow-lg hover:scale-105 hover:border-red-500 hover:bg-red-500/10 animate-smooth"
-                  title="Sair do modo administrador"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
-                </Button>
+          <div className="relative z-10 px-6 py-8 md:px-8">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-8 text-center animate-fade-in">
+                <div className="inline-flex flex-col items-center gap-3">
+                  <h1 className="px-1 pb-2 pt-1 text-5xl font-semibold leading-[1.08] tracking-[-0.065em] text-slate-900 md:text-6xl">
+                    <span>Agenda do </span>
+                    <span className="bg-[linear-gradient(135deg,rgba(67,56,202,1)_0%,rgba(59,130,246,0.96)_38%,rgba(124,58,237,0.9)_68%,rgba(45,212,191,0.82)_100%)] bg-clip-text text-transparent">
+                      Juliano
+                    </span>
+                  </h1>
+                  <span className="h-px w-28 bg-gradient-to-r from-transparent via-slate-300/80 to-transparent" />
+                </div>
               </div>
-            )}
 
-            {!isAdmin && !showAdminPanel && (
-              <div className="mb-8 flex justify-center animate-fade-in">
-                <NewMeetingDialog selectedDate={selectedDate} onSave={handleSaveMeeting} />
-              </div>
-            )}
-
-            {showAdminPanel && isAdmin ? (
-              <AdminPanel
-                meetings={pendingMeetings}
-                onApprove={handleApproveMeeting}
-                onReject={handleRejectMeeting}
-                onOpenDetails={handleMeetingSelect}
-              />
-            ) : (
-              <>
-                <CalendarHeader
-                  currentMonth={currentMonth}
-                  onPreviousMonth={handlePreviousMonth}
-                  onNextMonth={handleNextMonth}
-                />
-
-                <div className="grid gap-8 lg:grid-cols-3">
-                  <div className="lg:col-span-2">
-                    <CalendarGrid
-                      currentMonth={currentMonth}
-                      meetings={meetings}
-                      selectedDate={selectedDate}
-                      onDateClick={handleDateClick}
-                    />
+              {isAdmin && (
+                <div className="mb-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
+                  <div className="flex rounded-[1.25rem] border border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(241,246,255,0.98))] p-1 shadow-[0_22px_34px_-26px_rgba(15,23,42,0.24)] backdrop-blur-xl">
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPanel(false)}
+                      aria-pressed={!showAdminPanel}
+                      className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
+                        !showAdminPanel
+                          ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
+                          : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
+                      }`}
+                    >
+                      Calendario
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPanel(true)}
+                      aria-pressed={showAdminPanel}
+                      className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
+                        showAdminPanel
+                          ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
+                          : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
+                      }`}
+                    >
+                      Solicitacoes
+                      {pendingMeetings.length > 0 && (
+                        <span className="ml-2 inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded-full border border-white/45 bg-[linear-gradient(135deg,rgba(99,102,241,1),rgba(59,130,246,1))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_20px_-14px_rgba(79,70,229,0.54)]">
+                          {pendingMeetings.length}
+                        </span>
+                      )}
+                    </button>
                   </div>
 
-                  <div className="lg:col-span-1">
-                    {selectedDate && (
-                      <div className="sticky top-8 animate-slide-in-right">
-                        <MeetingList
-                          date={selectedDate}
-                          meetings={selectedDateMeetings}
-                          onMeetingSelect={isAdmin ? handleMeetingSelect : undefined}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-[1rem] border border-red-200/90 bg-white/88 text-red-500 shadow-[0_18px_28px_-24px_rgba(239,68,68,0.42)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-red-50 hover:text-red-600"
+                    title="Sair do modo administrador"
+                  >
+                    <LogOut className="h-4.5 w-4.5" />
+                  </button>
+
+                  <NewMeetingDialog selectedDate={selectedDate} onSave={handleSaveMeeting} />
+                </div>
+              )}
+
+              {!isAdmin && !showAdminPanel && (
+                <div className="mb-8 flex justify-center animate-fade-in">
+                  <NewMeetingDialog selectedDate={selectedDate} onSave={handleSaveMeeting} />
+                </div>
+              )}
+
+              {showAdminPanel && isAdmin ? (
+                <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200">
+                  <AdminPanel
+                    meetings={pendingMeetings}
+                    onApprove={handleApproveMeeting}
+                    onReject={handleRejectMeeting}
+                    onOpenDetails={handleMeetingSelect}
+                  />
+                </div>
+              ) : (
+                <>
+                  <CalendarHeader
+                    currentMonth={currentMonth}
+                    onPreviousMonth={handlePreviousMonth}
+                    onNextMonth={handleNextMonth}
+                  />
+
+                  <div className="grid gap-8 lg:grid-cols-3">
+                    <div className="lg:col-span-2">
+                      <div className="glass-effect rounded-[2rem] p-6 shadow-glass">
+                        <CalendarGrid
+                          currentMonth={currentMonth}
+                          meetings={meetings}
+                          selectedDate={selectedDate}
+                          onDateClick={handleDateClick}
                         />
                       </div>
-                    )}
+                    </div>
+
+                    <div className="lg:col-span-1">
+                      {selectedDate && (
+                        <div className="sticky top-8 animate-slide-in-right">
+                          <MeetingList
+                            date={selectedDate}
+                            meetings={selectedDateMeetings}
+                            onMeetingSelect={isAdmin ? handleMeetingSelect : undefined}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

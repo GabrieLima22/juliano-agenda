@@ -1,4 +1,4 @@
-import { Clock, ChevronDown, ChevronUp, Link as LinkIcon, MapPin, Timer, Users, Video } from "lucide-react";
+import { Clock, ChevronDown, ChevronUp, Link as LinkIcon, MapPin, RefreshCw, Timer, Users, Video } from "lucide-react";
 import { formatDuration } from "@/lib/duration";
 import { Meeting, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
 
@@ -109,9 +109,14 @@ export const MobileMeetingCard = ({
         className="flex w-full appearance-none items-start justify-between gap-3 bg-transparent pl-2 text-left outline-none focus:outline-none focus-visible:outline-none"
       >
         <div className="min-w-0 flex-1">
-          <h3 className={`pr-4 text-[15px] font-bold leading-tight ${tone.title}`}>
-            {meeting.title}
-          </h3>
+          <div className="flex items-start gap-1.5 pr-4">
+            <h3 className={`text-[15px] font-bold leading-tight ${tone.title}`}>
+              {meeting.title}
+            </h3>
+            {meeting.isRecurring && (
+              <RefreshCw className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+            )}
+          </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-slate-500">
             <span className="inline-flex items-center gap-1.5">

@@ -4,11 +4,25 @@ import { parseLocalDate } from "@/lib/utils";
 
 const WEEKDAY_ORDER = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"] as const;
 const WEEKDAY_PRIORITY = new Map(WEEKDAY_ORDER.map((day, index) => [day, index]));
+const WEEKDAY_DISPLAY_LABELS: Record<(typeof WEEKDAY_ORDER)[number], string> = {
+  Dom: "Domingo",
+  Seg: "Segunda-feira",
+  Ter: "Terça-feira",
+  Qua: "Quarta-feira",
+  Qui: "Quinta-feira",
+  Sex: "Sexta-feira",
+  Sab: "Sábado",
+};
 
 const canonicalizeWeekday = (day: string) => {
   const trimmed = day.trim();
 
-  if (trimmed === "SÃ¡b" || trimmed === "Sábado") {
+  if (
+    trimmed === "SÃƒÂ¡b" ||
+    trimmed === "SÃ¡bado" ||
+    trimmed === "Sáb" ||
+    trimmed === "Sábado"
+  ) {
     return "Sab";
   }
 
@@ -25,6 +39,9 @@ const normalizeWeekdays = (days: string[] | null | undefined): string[] => {
     .filter((day) => WEEKDAY_PRIORITY.has(day))
     .sort((a, b) => (WEEKDAY_PRIORITY.get(a) ?? 99) - (WEEKDAY_PRIORITY.get(b) ?? 99));
 };
+
+const formatWeekdayDisplay = (day: string) =>
+  WEEKDAY_DISPLAY_LABELS[canonicalizeWeekday(day) as keyof typeof WEEKDAY_DISPLAY_LABELS] ?? day;
 
 const resolveMonthlyDay = (meeting: Pick<Meeting, "date" | "recurrenceDayOfMonth">) => {
   if (typeof meeting.recurrenceDayOfMonth === "number" && meeting.recurrenceDayOfMonth >= 1) {
@@ -175,17 +192,17 @@ export const getRecurrenceSummary = (
   if (meeting.recurrenceType === "weekly") {
     const days = normalizeWeekdays(meeting.recurrenceDaysOfWeek);
     if (days.length > 0) {
-      return `Toda semana em ${days.join(", ")}`;
+      return `Toda semana em ${days.map(formatWeekdayDisplay).join(", ")}`;
     }
 
-    return "Repeticao semanal";
+    return "Repetição semanal";
   }
 
   if (meeting.recurrenceType === "daily") {
-    return `Todo mes no dia ${resolveMonthlyDay(meeting)}`;
+    return `Todo mês no dia ${resolveMonthlyDay(meeting)}`;
   }
 
-  return "Reuniao recorrente";
+  return "Reunião recorrente";
 };
 
 export const getRecurrenceDetails = (
@@ -197,16 +214,16 @@ export const getRecurrenceDetails = (
 
   return [
     {
-      label: "Inicio",
+      label: "Início",
       value: format(parseLocalDate(meeting.date), "dd/MM/yyyy"),
     },
     {
-      label: "Frequencia",
+      label: "Frequência",
       value: getRecurrenceFrequencyLabel(meeting.recurrenceType),
     },
     {
-      label: "Repeticao",
-      value: getRecurrenceSummary(meeting) ?? "Reuniao recorrente",
+      label: "Repetição",
+      value: getRecurrenceSummary(meeting) ?? "Reunião recorrente",
     },
   ];
 };

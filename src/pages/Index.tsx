@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AdminLoginDialog } from "@/components/Admin/AdminLoginDialog";
 import { MeetingDetailsDialog } from "@/components/Admin/MeetingDetailsDialog";
 import { AdminPanel } from "@/components/Admin/AdminPanel";
+import { RecurringMeetingsPanel } from "@/components/Admin/RecurringMeetingsPanel";
 import { AdminToggle } from "@/components/Admin/AdminToggle";
 import { CalendarGrid } from "@/components/Calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/Calendar/CalendarHeader";
@@ -25,6 +26,8 @@ import { getMeetingsOccurringOnDate } from "@/lib/recurrence";
 import { resolveApiBase } from "@/lib/runtime";
 import { Meeting } from "@/types/meeting";
 
+type AdminView = "calendar" | "pending" | "recurring";
+
 const Index = () => {
   const isMobile = useIsMobile();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -32,7 +35,7 @@ const Index = () => {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminView, setAdminView] = useState<AdminView>("calendar");
   const [pendingMeetings, setPendingMeetings] = useState<Meeting[]>([]);
   const [selectedMeetingForAdmin, setSelectedMeetingForAdmin] = useState<Meeting | null>(null);
   const [showMeetingDetails, setShowMeetingDetails] = useState(false);
@@ -77,9 +80,34 @@ const Index = () => {
 
   useEffect(() => {
     if (!isAdmin) {
-      setShowAdminPanel(false);
+      setAdminView("calendar");
     }
   }, [isAdmin]);
+
+  const recurringMeetings = useMemo(
+    () =>
+      meetings
+        .filter((meeting) => meeting.isRecurring && meeting.status !== "rejected")
+        .sort((a, b) => {
+          const statusPriority = a.status.localeCompare(b.status);
+          if (statusPriority !== 0) {
+            return statusPriority;
+          }
+
+          const dateComparison = (a.date ?? "").localeCompare(b.date ?? "");
+          if (dateComparison !== 0) {
+            return dateComparison;
+          }
+
+          const timeComparison = (a.time ?? "").localeCompare(b.time ?? "");
+          if (timeComparison !== 0) {
+            return timeComparison;
+          }
+
+          return (a.title ?? "").localeCompare(b.title ?? "");
+        }),
+    [meetings],
+  );
 
   const selectedDateMeetings = useMemo(() => {
     if (!selectedDate) {
@@ -156,7 +184,7 @@ const Index = () => {
 
   const handleAdminToggleClick = () => {
     if (isAdmin) {
-      setShowAdminPanel((current) => !current);
+      setAdminView((current) => (current === "calendar" ? "pending" : "calendar"));
     } else {
       setShowAdminLogin(true);
     }
@@ -170,7 +198,7 @@ const Index = () => {
     }
 
     setIsAdmin(false);
-    setShowAdminPanel(false);
+    setAdminView("calendar");
     await loadMeetings();
     toast.success("Voce saiu do modo administrador.");
   };
@@ -225,7 +253,11 @@ const Index = () => {
   };
 
   const handleDeleteMeeting = async (meeting: Meeting) => {
-    const confirmed = window.confirm(`Deseja realmente excluir a reuniao "${meeting.title}"?`);
+    const confirmed = window.confirm(
+      meeting.isRecurring
+        ? `Deseja realmente excluir a serie recorrente "${meeting.title}"?`
+        : `Deseja realmente excluir a reuniao "${meeting.title}"?`,
+    );
     if (!confirmed) {
       return;
     }
@@ -273,7 +305,7 @@ const Index = () => {
           meetings={meetings}
           selectedDateMeetings={selectedDateMeetings}
           isAdmin={isAdmin}
-          showAdminPanel={showAdminPanel}
+          showAdminPanel={adminView === "pending"}
           pendingMeetings={pendingMeetings}
           onPreviousMonth={handleMobilePreviousMonth}
           onNextMonth={handleMobileNextMonth}
@@ -281,7 +313,7 @@ const Index = () => {
           onOpenMeetingDetails={handleMeetingSelect}
           onApproveMeeting={handleApproveMeeting}
           onRejectMeeting={handleRejectMeeting}
-          onToggleAdminPanel={setShowAdminPanel}
+          onToggleAdminPanel={(show) => setAdminView(show ? "pending" : "calendar")}
           onLogout={handleLogout}
           newMeetingAction={
             <NewMeetingDialog
@@ -333,10 +365,10 @@ const Index = () => {
                   <div className="flex rounded-[1.25rem] border border-white/90 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(241,246,255,0.98))] p-1 shadow-[0_22px_34px_-26px_rgba(15,23,42,0.24)] backdrop-blur-xl">
                     <button
                       type="button"
-                      onClick={() => setShowAdminPanel(false)}
-                      aria-pressed={!showAdminPanel}
+                      onClick={() => setAdminView("calendar")}
+                      aria-pressed={adminView === "calendar"}
                       className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
-                        !showAdminPanel
+                        adminView === "calendar"
                           ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
                           : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
                       }`}
@@ -345,10 +377,10 @@ const Index = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowAdminPanel(true)}
-                      aria-pressed={showAdminPanel}
+                      onClick={() => setAdminView("pending")}
+                      aria-pressed={adminView === "pending"}
                       className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
-                        showAdminPanel
+                        adminView === "pending"
                           ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
                           : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
                       }`}
@@ -357,6 +389,23 @@ const Index = () => {
                       {pendingMeetings.length > 0 && (
                         <span className="ml-2 inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded-full border border-white/45 bg-[linear-gradient(135deg,rgba(99,102,241,1),rgba(59,130,246,1))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_20px_-14px_rgba(79,70,229,0.54)]">
                           {pendingMeetings.length}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdminView("recurring")}
+                      aria-pressed={adminView === "recurring"}
+                      className={`rounded-[0.95rem] border px-5 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out ${
+                        adminView === "recurring"
+                          ? "border-slate-950 bg-slate-950 text-white shadow-[0_16px_28px_-22px_rgba(15,23,42,0.42)]"
+                          : "border-slate-200/70 bg-white/62 text-slate-600 hover:border-slate-300/90 hover:bg-white/88 hover:text-slate-900"
+                      }`}
+                    >
+                      Recorrentes
+                      {recurringMeetings.length > 0 && (
+                        <span className="ml-2 inline-flex h-5 min-w-[1.35rem] items-center justify-center rounded-full border border-white/45 bg-[linear-gradient(135deg,rgba(124,58,237,1),rgba(99,102,241,1))] px-1.5 text-[11px] font-bold text-white shadow-[0_12px_20px_-14px_rgba(109,40,217,0.54)]">
+                          {recurringMeetings.length}
                         </span>
                       )}
                     </button>
@@ -375,19 +424,27 @@ const Index = () => {
                 </div>
               )}
 
-              {!isAdmin && !showAdminPanel && (
+              {!isAdmin && adminView === "calendar" && (
                 <div className="mb-8 flex justify-center animate-fade-in">
                   <NewMeetingDialog selectedDate={selectedDate} onSave={handleSaveMeeting} />
                 </div>
               )}
 
-              {showAdminPanel && isAdmin ? (
+              {adminView === "pending" && isAdmin ? (
                 <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200">
                   <AdminPanel
                     meetings={pendingMeetings}
                     onApprove={handleApproveMeeting}
                     onReject={handleRejectMeeting}
                     onOpenDetails={handleMeetingSelect}
+                  />
+                </div>
+              ) : adminView === "recurring" && isAdmin ? (
+                <div className="motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-200">
+                  <RecurringMeetingsPanel
+                    meetings={recurringMeetings}
+                    onOpenDetails={handleMeetingSelect}
+                    onDelete={handleDeleteMeeting}
                   />
                 </div>
               ) : (

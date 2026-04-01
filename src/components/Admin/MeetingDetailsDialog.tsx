@@ -27,14 +27,13 @@ import {
 import { MeetingUpdatePayload } from "@/lib/meetingStorage";
 import { formatDuration, parseDurationInput } from "@/lib/duration";
 import {
-  MONTHLY_RECURRENCE_WEEKS,
-  RECURRENCE_WEEKDAYS,
   getMonthlyWeekdayPatternFromDate,
   getRecurrenceDetails,
   getRecurrenceSummary,
   getWeekdayFromDate,
 } from "@/lib/recurrence";
 import { parseLocalDate } from "@/lib/utils";
+import { RecurrencePatternEditor } from "@/components/Calendar/RecurrencePatternEditor";
 
 interface MeetingDetailsDialogProps {
   meeting: Meeting | null;
@@ -47,15 +46,6 @@ interface MeetingDetailsDialogProps {
 }
 
 type MeetingStatus = Meeting["status"];
-
-const MONTHLY_WEEK_LABELS: Record<MonthlyRecurrenceWeek, string> = {
-  1: "1a",
-  2: "2a",
-  3: "3a",
-  4: "4a",
-  5: "5a",
-  [-1]: "Ultima",
-};
 
 const buildDateBasedDefaults = (dateValue: string) => {
   const safeDate = dateValue || format(new Date(), "yyyy-MM-dd");
@@ -332,90 +322,24 @@ export const MeetingDetailsDialog = ({
                 </div>
 
                 {meeting.isRecurring && (
-                  <section className="space-y-4 rounded-[1.35rem] border border-border/50 bg-slate-50/75 p-4">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <h3 className="text-sm font-semibold text-slate-900">Editar recorrencia</h3>
-                        <p className="text-xs text-slate-500">Ajuste diario, semanal ou mensal e confira o resumo.</p>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button type="button" onClick={() => handleRecurrenceTypeChange("daily")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${recurrenceType === "daily" ? "border-violet-500/40 bg-violet-600 text-white shadow-[0_12px_24px_-18px_rgba(109,40,217,0.6)]" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Diario</button>
-                        <button type="button" onClick={() => handleRecurrenceTypeChange("weekly")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${recurrenceType === "weekly" ? "border-violet-500/40 bg-violet-600 text-white shadow-[0_12px_24px_-18px_rgba(109,40,217,0.6)]" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Semanal</button>
-                        <button type="button" onClick={() => handleRecurrenceTypeChange("monthly")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${recurrenceType === "monthly" ? "border-violet-500/40 bg-violet-600 text-white shadow-[0_12px_24px_-18px_rgba(109,40,217,0.6)]" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Mensal</button>
-                      </div>
-                    </div>
-
-                    {recurrenceType === "daily" && (
-                      <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-700">
-                        A reuniao vai se repetir todos os dias a partir da data de inicio.
-                      </div>
-                    )}
-
-                    {recurrenceType === "weekly" && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Repetir nos dias:</p>
-                        <div className="grid grid-cols-7 gap-2">
-                          {RECURRENCE_WEEKDAYS.map((day) => (
-                            <button key={day} type="button" onClick={() => toggleWeekDay(day)} className={`rounded-xl py-2.5 text-xs font-medium transition-all ${recurrenceDaysOfWeek.includes(day) ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{day}</button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {recurrenceType === "monthly" && (
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Modelo mensal:</p>
-                            <p className="mt-1 text-xs text-muted-foreground">Escolha entre dia fixo ou semana + dia da semana.</p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <button type="button" onClick={() => setMonthlyRecurrenceMode("dayOfMonth")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${monthlyRecurrenceMode === "dayOfMonth" ? "border-primary/40 bg-primary text-primary-foreground shadow-sm" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Dia fixo</button>
-                            <button type="button" onClick={() => setMonthlyRecurrenceMode("weekday")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${monthlyRecurrenceMode === "weekday" ? "border-primary/40 bg-primary text-primary-foreground shadow-sm" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Semana + dia</button>
-                          </div>
-                        </div>
-
-                        {monthlyRecurrenceMode === "dayOfMonth" && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia do mes:</p>
-                            <div className="grid grid-cols-7 gap-1.5">
-                              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                                <button key={day} type="button" onClick={() => setRecurrenceDayOfMonth(day)} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-medium transition-all ${recurrenceDayOfMonth === day ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{day}</button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {monthlyRecurrenceMode === "weekday" && (
-                          <div className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Semana do mes:</p>
-                              <div className="grid grid-cols-3 gap-2">
-                                {MONTHLY_RECURRENCE_WEEKS.map((week) => (
-                                  <button key={week} type="button" onClick={() => setRecurrenceMonthlyWeek(week)} className={`rounded-xl px-3 py-2 text-xs font-medium transition-all ${recurrenceMonthlyWeek === week ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{MONTHLY_WEEK_LABELS[week]}</button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia da semana:</p>
-                              <div className="grid grid-cols-4 gap-2">
-                                {RECURRENCE_WEEKDAYS.map((day) => (
-                                  <button key={day} type="button" onClick={() => setRecurrenceMonthlyWeekday(day)} className={`rounded-xl px-3 py-2 text-xs font-medium transition-all ${recurrenceMonthlyWeekday === day ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{day}</button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {recurrenceSummary && (
-                      <div className="rounded-2xl border border-violet-200/70 bg-violet-50/80 px-4 py-3 text-sm text-violet-700">
-                        <span className="font-medium">Resumo:</span> {recurrenceSummary}
-                      </div>
-                    )}
-                  </section>
+                  <RecurrencePatternEditor
+                    startDate={date}
+                    recurrenceType={recurrenceType}
+                    onRecurrenceTypeChange={handleRecurrenceTypeChange}
+                    recurrenceDaysOfWeek={recurrenceDaysOfWeek}
+                    onToggleWeekDay={toggleWeekDay}
+                    monthlyRecurrenceMode={monthlyRecurrenceMode}
+                    onMonthlyRecurrenceModeChange={setMonthlyRecurrenceMode}
+                    recurrenceDayOfMonth={recurrenceDayOfMonth}
+                    onRecurrenceDayOfMonthChange={setRecurrenceDayOfMonth}
+                    recurrenceMonthlyWeek={recurrenceMonthlyWeek}
+                    onRecurrenceMonthlyWeekChange={setRecurrenceMonthlyWeek}
+                    recurrenceMonthlyWeekday={recurrenceMonthlyWeekday}
+                    onRecurrenceMonthlyWeekdayChange={setRecurrenceMonthlyWeekday}
+                    recurrenceSummary={recurrenceSummary}
+                    heading="Como essa serie deve funcionar?"
+                    description="Ajuste a frequencia e a regra com base no comportamento desejado. O resumo final descreve exatamente a recorrencia salva."
+                  />
                 )}
 
                 <div className="space-y-2">

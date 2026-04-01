@@ -365,9 +365,9 @@ const Index = () => {
             <div className="mx-auto max-w-7xl">
               <div className="mb-8 text-center animate-fade-in">
                 <div className="inline-flex flex-col items-center gap-3">
-                  <h1 className="px-1 pb-2 pt-1 text-5xl font-semibold leading-[1.08] tracking-[-0.065em] text-slate-900 md:text-6xl">
+                  <h1 className="px-1 pb-3 pt-1 text-5xl font-semibold leading-[1.12] tracking-[-0.065em] text-slate-900 md:text-6xl">
                     <span>Agenda do </span>
-                    <span className="bg-[linear-gradient(135deg,rgba(67,56,202,1)_0%,rgba(59,130,246,0.96)_38%,rgba(124,58,237,0.9)_68%,rgba(45,212,191,0.82)_100%)] bg-clip-text text-transparent">
+                    <span className="inline-block pb-[0.08em] bg-[linear-gradient(135deg,rgba(67,56,202,1)_0%,rgba(59,130,246,0.96)_38%,rgba(124,58,237,0.9)_68%,rgba(45,212,191,0.82)_100%)] bg-clip-text text-transparent">
                       Juliano
                     </span>
                   </h1>

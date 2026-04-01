@@ -67,6 +67,8 @@ function ensure_meetings_table_mysql(PDO $pdo): void {
             recurrence_type VARCHAR(20) DEFAULT NULL,
             recurrence_day_of_month INT DEFAULT NULL,
             recurrence_days_of_week VARCHAR(100) DEFAULT NULL,
+            recurrence_monthly_week INT DEFAULT NULL,
+            recurrence_monthly_weekday VARCHAR(10) DEFAULT NULL,
             created_at DATETIME NOT NULL,
             status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
             PRIMARY KEY (id),
@@ -93,6 +95,8 @@ function ensure_meetings_table_sqlite(PDO $pdo): void {
             recurrence_type TEXT DEFAULT NULL,
             recurrence_day_of_month INTEGER DEFAULT NULL,
             recurrence_days_of_week TEXT DEFAULT NULL,
+            recurrence_monthly_week INTEGER DEFAULT NULL,
+            recurrence_monthly_weekday TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending'
         )"
@@ -116,6 +120,8 @@ function ensure_missing_meetings_columns(PDO $pdo): void {
             'recurrence_type' => "ALTER TABLE meetings ADD COLUMN recurrence_type TEXT DEFAULT NULL",
             'recurrence_day_of_month' => "ALTER TABLE meetings ADD COLUMN recurrence_day_of_month INTEGER DEFAULT NULL",
             'recurrence_days_of_week' => "ALTER TABLE meetings ADD COLUMN recurrence_days_of_week TEXT DEFAULT NULL",
+            'recurrence_monthly_week' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_week INTEGER DEFAULT NULL",
+            'recurrence_monthly_weekday' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_weekday TEXT DEFAULT NULL",
             'created_at' => "ALTER TABLE meetings ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
             'status' => "ALTER TABLE meetings ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
         ]
@@ -129,6 +135,8 @@ function ensure_missing_meetings_columns(PDO $pdo): void {
             'recurrence_type' => "ALTER TABLE meetings ADD COLUMN recurrence_type VARCHAR(20) DEFAULT NULL",
             'recurrence_day_of_month' => "ALTER TABLE meetings ADD COLUMN recurrence_day_of_month INT DEFAULT NULL",
             'recurrence_days_of_week' => "ALTER TABLE meetings ADD COLUMN recurrence_days_of_week VARCHAR(100) DEFAULT NULL",
+            'recurrence_monthly_week' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_week INT DEFAULT NULL",
+            'recurrence_monthly_weekday' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_weekday VARCHAR(10) DEFAULT NULL",
             'created_at' => "ALTER TABLE meetings ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
             'status' => "ALTER TABLE meetings ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'",
         ];
@@ -153,6 +161,7 @@ function ensure_meetings_schema(PDO $pdo): void {
 
     try {
         $pdo->exec("UPDATE meetings SET meeting_type = 'external' WHERE meeting_type = 'externa'");
+        $pdo->exec("UPDATE meetings SET recurrence_type = 'monthly' WHERE is_recurring = 1 AND recurrence_type = 'daily' AND recurrence_day_of_month IS NOT NULL");
 
         if ($driver !== 'sqlite') {
             $columns = get_table_columns($pdo, 'meetings');

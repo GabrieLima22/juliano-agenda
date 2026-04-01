@@ -1,27 +1,42 @@
-import { eachDayOfInterval, format } from "date-fns";
-import { Meeting, RecurrenceType } from "@/types/meeting";
+import { addDays, eachDayOfInterval, format } from "date-fns";
+import { Meeting, MonthlyRecurrenceWeek, RecurrenceType } from "@/types/meeting";
 import { parseLocalDate } from "@/lib/utils";
 
 const WEEKDAY_ORDER = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"] as const;
+type WeekdayKey = (typeof WEEKDAY_ORDER)[number];
+
+export const RECURRENCE_WEEKDAYS = [...WEEKDAY_ORDER];
+export const MONTHLY_RECURRENCE_WEEKS = [1, 2, 3, 4, 5, -1] as const;
+
 const WEEKDAY_PRIORITY = new Map(WEEKDAY_ORDER.map((day, index) => [day, index]));
-const WEEKDAY_DISPLAY_LABELS: Record<(typeof WEEKDAY_ORDER)[number], string> = {
+const WEEKDAY_DISPLAY_LABELS: Record<WeekdayKey, string> = {
   Dom: "Domingo",
   Seg: "Segunda-feira",
-  Ter: "Terça-feira",
+  Ter: "Terca-feira",
   Qua: "Quarta-feira",
   Qui: "Quinta-feira",
   Sex: "Sexta-feira",
-  Sab: "Sábado",
+  Sab: "Sabado",
+};
+
+const MONTHLY_WEEK_LABELS: Record<MonthlyRecurrenceWeek, string> = {
+  1: "1a",
+  2: "2a",
+  3: "3a",
+  4: "4a",
+  5: "5a",
+  [-1]: "ultima",
 };
 
 const canonicalizeWeekday = (day: string) => {
   const trimmed = day.trim();
 
   if (
-    trimmed === "SÃƒÂ¡b" ||
+    trimmed === "SÃƒÆ’Ã‚Â¡b" ||
+    trimmed === "SÃƒÂ¡bado" ||
+    trimmed === "SÃ¡b" ||
     trimmed === "SÃ¡bado" ||
-    trimmed === "Sáb" ||
-    trimmed === "Sábado"
+    trimmed === "Sabado"
   ) {
     return "Sab";
   }
@@ -41,15 +56,7 @@ const normalizeWeekdays = (days: string[] | null | undefined): string[] => {
 };
 
 const formatWeekdayDisplay = (day: string) =>
-  WEEKDAY_DISPLAY_LABELS[canonicalizeWeekday(day) as keyof typeof WEEKDAY_DISPLAY_LABELS] ?? day;
-
-const resolveMonthlyDay = (meeting: Pick<Meeting, "date" | "recurrenceDayOfMonth">) => {
-  if (typeof meeting.recurrenceDayOfMonth === "number" && meeting.recurrenceDayOfMonth >= 1) {
-    return meeting.recurrenceDayOfMonth;
-  }
-
-  return parseLocalDate(meeting.date).getDate();
-};
+  WEEKDAY_DISPLAY_LABELS[canonicalizeWeekday(day) as WeekdayKey] ?? day;
 
 const weekdayToNumber = (day: string) => {
   switch (canonicalizeWeekday(day)) {
@@ -72,6 +79,16 @@ const weekdayToNumber = (day: string) => {
   }
 };
 
+const numberToWeekday = (day: number): WeekdayKey => WEEKDAY_ORDER[day] ?? "Dom";
+
+const resolveMonthlyDay = (meeting: Pick<Meeting, "date" | "recurrenceDayOfMonth">) => {
+  if (typeof meeting.recurrenceDayOfMonth === "number" && meeting.recurrenceDayOfMonth >= 1) {
+    return meeting.recurrenceDayOfMonth;
+  }
+
+  return parseLocalDate(meeting.date).getDate();
+};
+
 const toDateKey = (value: Date | string) =>
   typeof value === "string" ? value : format(value, "yyyy-MM-dd");
 
@@ -84,12 +101,105 @@ const compareMeetingTime = (a: Pick<Meeting, "time" | "title">, b: Pick<Meeting,
   return (a.title ?? "").localeCompare(b.title ?? "");
 };
 
+const getWeekdayOccurrenceInMonth = (date: Date) => Math.floor((date.getDate() - 1) / 7) + 1;
+
+const isLastWeekdayOfMonth = (date: Date) => addDays(date, 7).getMonth() !== date.getMonth();
+
+const normalizeMonthlyWeek = (value: unknown): MonthlyRecurrenceWeek | null => {
+  if (typeof value !== "number") {
+    return null;
+  }
+
+  if (value === -1 || (value >= 1 && value <= 5)) {
+    return value as MonthlyRecurrenceWeek;
+  }
+
+  return null;
+};
+
+const getMonthlyWeekdayRule = (
+  meeting: Pick<Meeting, "recurrenceMonthlyWeek" | "recurrenceMonthlyWeekday">,
+) => {
+  const week = normalizeMonthlyWeek(meeting.recurrenceMonthlyWeek);
+  const weekday = meeting.recurrenceMonthlyWeekday
+    ? canonicalizeWeekday(meeting.recurrenceMonthlyWeekday)
+    : null;
+
+  if (!week || !weekday || weekdayToNumber(weekday) === null) {
+    return null;
+  }
+
+  return { week, weekday };
+};
+
+const getEffectiveRecurrenceType = (
+  meeting: Pick<Meeting, "recurrenceType" | "recurrenceDayOfMonth">,
+): RecurrenceType | null => {
+  if (meeting.recurrenceType === "daily" && typeof meeting.recurrenceDayOfMonth === "number") {
+    return "monthly";
+  }
+
+  return meeting.recurrenceType ?? null;
+};
+
+const getMonthlyWeekdaySummary = (
+  meeting: Pick<Meeting, "recurrenceMonthlyWeek" | "recurrenceMonthlyWeekday">,
+) => {
+  const rule = getMonthlyWeekdayRule(meeting);
+  if (!rule) {
+    return null;
+  }
+
+  return `Todo mes na ${MONTHLY_WEEK_LABELS[rule.week]} ${formatWeekdayDisplay(rule.weekday)}`;
+};
+
+const matchesMonthlyWeekdayRule = (
+  meeting: Pick<Meeting, "recurrenceMonthlyWeek" | "recurrenceMonthlyWeekday">,
+  targetDate: Date,
+) => {
+  const rule = getMonthlyWeekdayRule(meeting);
+  if (!rule) {
+    return false;
+  }
+
+  if (weekdayToNumber(rule.weekday) !== targetDate.getDay()) {
+    return false;
+  }
+
+  if (rule.week === -1) {
+    return isLastWeekdayOfMonth(targetDate);
+  }
+
+  return getWeekdayOccurrenceInMonth(targetDate) === rule.week;
+};
+
+export const getWeekdayFromDate = (value: Date | string) => {
+  const date = typeof value === "string" ? parseLocalDate(value) : value;
+  return numberToWeekday(date.getDay());
+};
+
+export const getMonthlyWeekdayPatternFromDate = (
+  value: Date | string,
+): { week: MonthlyRecurrenceWeek; weekday: WeekdayKey } => {
+  const date = typeof value === "string" ? parseLocalDate(value) : value;
+  const week = isLastWeekdayOfMonth(date)
+    ? -1
+    : (getWeekdayOccurrenceInMonth(date) as MonthlyRecurrenceWeek);
+
+  return {
+    week,
+    weekday: numberToWeekday(date.getDay()),
+  };
+};
+
 interface RecurringMeetingShape {
   date: string;
   isRecurring?: boolean;
   recurrenceType?: RecurrenceType | null;
   recurrenceDayOfMonth?: number | null;
   recurrenceDaysOfWeek?: string[] | null;
+  recurrenceMonthlyWeek?: MonthlyRecurrenceWeek | null;
+  recurrenceMonthlyWeekday?: string | null;
 }
 
 interface MeetingCollectionFilter {
@@ -128,7 +238,12 @@ export const meetingOccursOnDate = (
     return false;
   }
 
-  if (meeting.recurrenceType === "weekly") {
+  const recurrenceType = getEffectiveRecurrenceType(meeting);
+  if (recurrenceType === "daily") {
+    return true;
+  }
+
+  if (recurrenceType === "weekly") {
     const days = normalizeWeekdays(meeting.recurrenceDaysOfWeek);
     if (days.length === 0) {
       return false;
@@ -138,8 +253,13 @@ export const meetingOccursOnDate = (
     return days.some((day) => weekdayToNumber(day) === targetWeekday);
   }
 
-  if (meeting.recurrenceType === "daily") {
-    return parseLocalDate(dateKey).getDate() === resolveMonthlyDay(meeting);
+  if (recurrenceType === "monthly") {
+    const parsedTargetDate = parseLocalDate(dateKey);
+    if (getMonthlyWeekdayRule(meeting)) {
+      return matchesMonthlyWeekdayRule(meeting, parsedTargetDate);
+    }
+
+    return parsedTargetDate.getDate() === resolveMonthlyDay(meeting);
   }
 
   return meeting.date === dateKey;
@@ -170,12 +290,24 @@ export const getMeetingCountMapForInterval = (
   return counts;
 };
 
-export const getRecurrenceFrequencyLabel = (recurrenceType?: RecurrenceType | null) => {
-  if (recurrenceType === "weekly") {
+export const getRecurrenceFrequencyLabel = (
+  recurrenceType?: RecurrenceType | null,
+  recurrenceDayOfMonth?: number | null,
+) => {
+  const effectiveType = getEffectiveRecurrenceType({
+    recurrenceType,
+    recurrenceDayOfMonth,
+  });
+
+  if (effectiveType === "daily") {
+    return "Diaria";
+  }
+
+  if (effectiveType === "weekly") {
     return "Semanal";
   }
 
-  if (recurrenceType === "daily") {
+  if (effectiveType === "monthly") {
     return "Mensal";
   }
 
@@ -183,30 +315,58 @@ export const getRecurrenceFrequencyLabel = (recurrenceType?: RecurrenceType | nu
 };
 
 export const getRecurrenceSummary = (
-  meeting: Pick<Meeting, "date" | "isRecurring" | "recurrenceType" | "recurrenceDayOfMonth" | "recurrenceDaysOfWeek">,
+  meeting: Pick<
+    Meeting,
+    | "date"
+    | "isRecurring"
+    | "recurrenceType"
+    | "recurrenceDayOfMonth"
+    | "recurrenceDaysOfWeek"
+    | "recurrenceMonthlyWeek"
+    | "recurrenceMonthlyWeekday"
+  >,
 ) => {
   if (!meeting.isRecurring) {
     return null;
   }
 
-  if (meeting.recurrenceType === "weekly") {
+  const recurrenceType = getEffectiveRecurrenceType(meeting);
+  if (recurrenceType === "daily") {
+    return "Todos os dias";
+  }
+
+  if (recurrenceType === "weekly") {
     const days = normalizeWeekdays(meeting.recurrenceDaysOfWeek);
     if (days.length > 0) {
       return `Toda semana em ${days.map(formatWeekdayDisplay).join(", ")}`;
     }
 
-    return "Repetição semanal";
+    return "Repeticao semanal";
   }
 
-  if (meeting.recurrenceType === "daily") {
-    return `Todo mês no dia ${resolveMonthlyDay(meeting)}`;
+  if (recurrenceType === "monthly") {
+    const monthlyWeekdaySummary = getMonthlyWeekdaySummary(meeting);
+    if (monthlyWeekdaySummary) {
+      return monthlyWeekdaySummary;
+    }
+
+    return `Todo mes no dia ${resolveMonthlyDay(meeting)}`;
   }
 
-  return "Reunião recorrente";
+  return "Reuniao recorrente";
 };
 
 export const getRecurrenceDetails = (
-  meeting: Pick<Meeting, "date" | "isRecurring" | "recurrenceType" | "recurrenceDayOfMonth" | "recurrenceDaysOfWeek">,
+  meeting: Pick<
+    Meeting,
+    | "date"
+    | "isRecurring"
+    | "recurrenceType"
+    | "recurrenceDayOfMonth"
+    | "recurrenceDaysOfWeek"
+    | "recurrenceMonthlyWeek"
+    | "recurrenceMonthlyWeekday"
+  >,
 ) => {
   if (!meeting.isRecurring) {
     return [];
@@ -214,16 +374,16 @@ export const getRecurrenceDetails = (
 
   return [
     {
-      label: "Início",
+      label: "Inicio",
       value: format(parseLocalDate(meeting.date), "dd/MM/yyyy"),
     },
     {
-      label: "Frequência",
-      value: getRecurrenceFrequencyLabel(meeting.recurrenceType),
+      label: "Frequencia",
+      value: getRecurrenceFrequencyLabel(meeting.recurrenceType, meeting.recurrenceDayOfMonth),
     },
     {
-      label: "Repetição",
-      value: getRecurrenceSummary(meeting) ?? "Reunião recorrente",
+      label: "Repeticao",
+      value: getRecurrenceSummary(meeting) ?? "Reuniao recorrente",
     },
   ];
 };

@@ -1,7 +1,8 @@
 import { Meeting, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
-import { Clock, Users, Timer, Video, MapPin, Link as LinkIcon } from "lucide-react";
+import { Clock, Users, Timer, Video, MapPin, Link as LinkIcon, RefreshCw } from "lucide-react";
 import { formatDuration } from "@/lib/duration";
 import { cn } from "@/lib/utils";
+import { getRecurrenceSummary } from "@/lib/recurrence";
 
 interface MeetingCardProps {
   meeting: Meeting;
@@ -15,6 +16,7 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
   const formattedTime = meeting.time?.slice(0, 5) ?? meeting.time;
   const meetingType = meeting.meetingType ?? "presencial";
   const hasOnlineLink = meetingTypeRequiresOnlineLink(meetingType) && Boolean(meeting.onlineLink);
+  const recurrenceSummary = getRecurrenceSummary(meeting);
   const statusBadge = isPending
     ? {
         label: "Aguardando confirma\u00E7\u00E3o",
@@ -78,6 +80,13 @@ export const MeetingCard = ({ meeting, onSelect }: MeetingCardProps) => {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Timer className="h-4 w-4" />
             <span>{formatDuration(meeting.durationMinutes)}</span>
+          </div>
+        )}
+
+        {meeting.isRecurring && recurrenceSummary && (
+          <div className="flex items-start gap-2 rounded-xl border border-violet-200/70 bg-violet-50/75 px-3 py-2 text-sm text-violet-700">
+            <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{recurrenceSummary}</span>
           </div>
         )}
 

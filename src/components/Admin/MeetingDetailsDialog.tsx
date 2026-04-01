@@ -15,10 +15,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Calendar, Clock, FileText, Link as LinkIcon, RefreshCw, Timer, Trash2, Users, Video, X } from "lucide-react";
 import { format } from "date-fns";
-import { Meeting, MeetingType, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
+import {
+  Meeting,
+  MeetingType,
+  MonthlyRecurrenceMode,
+  MonthlyRecurrenceWeek,
+  RecurrenceType,
+  getMeetingTypeLabel,
+  meetingTypeRequiresOnlineLink,
+} from "@/types/meeting";
 import { MeetingUpdatePayload } from "@/lib/meetingStorage";
 import { formatDuration, parseDurationInput } from "@/lib/duration";
-import { getRecurrenceDetails, getRecurrenceSummary } from "@/lib/recurrence";
+import {
+  MONTHLY_RECURRENCE_WEEKS,
+  RECURRENCE_WEEKDAYS,
+  getMonthlyWeekdayPatternFromDate,
+  getRecurrenceDetails,
+  getRecurrenceSummary,
+  getWeekdayFromDate,
+} from "@/lib/recurrence";
 import { parseLocalDate } from "@/lib/utils";
 
 interface MeetingDetailsDialogProps {
@@ -32,6 +47,35 @@ interface MeetingDetailsDialogProps {
 }
 
 type MeetingStatus = Meeting["status"];
+
+const MONTHLY_WEEK_LABELS: Record<MonthlyRecurrenceWeek, string> = {
+  1: "1a",
+  2: "2a",
+  3: "3a",
+  4: "4a",
+  5: "5a",
+  [-1]: "Ultima",
+};
+
+const buildDateBasedDefaults = (dateValue: string) => {
+  const safeDate = dateValue || format(new Date(), "yyyy-MM-dd");
+  const monthlyPattern = getMonthlyWeekdayPatternFromDate(safeDate);
+
+  return {
+    recurrenceDayOfMonth: parseLocalDate(safeDate).getDate(),
+    recurrenceWeekday: getWeekdayFromDate(safeDate),
+    recurrenceMonthlyWeek: monthlyPattern.week,
+    recurrenceMonthlyWeekday: monthlyPattern.weekday,
+  };
+};
+
+const resolveEditorRecurrenceType = (meeting: Meeting): RecurrenceType => {
+  if (meeting.recurrenceType === "daily" && typeof meeting.recurrenceDayOfMonth === "number") {
+    return "monthly";
+  }
+
+  return meeting.recurrenceType ?? "weekly";
+};
 
 export const MeetingDetailsDialog = ({
   meeting,
@@ -51,48 +95,69 @@ export const MeetingDetailsDialog = ({
   const [meetingType, setMeetingType] = useState<MeetingType>("presencial");
   const [onlineLink, setOnlineLink] = useState("");
   const [status, setStatus] = useState<MeetingStatus>("pending");
+  const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>("weekly");
+  const [recurrenceDayOfMonth, setRecurrenceDayOfMonth] = useState<number>(1);
+  const [recurrenceDaysOfWeek, setRecurrenceDaysOfWeek] = useState<string[]>([]);
+  const [monthlyRecurrenceMode, setMonthlyRecurrenceMode] = useState<MonthlyRecurrenceMode>("dayOfMonth");
+  const [recurrenceMonthlyWeek, setRecurrenceMonthlyWeek] = useState<MonthlyRecurrenceWeek>(1);
+  const [recurrenceMonthlyWeekday, setRecurrenceMonthlyWeekday] = useState<string>("Seg");
   const requiresOnlineLink = meetingTypeRequiresOnlineLink(meetingType);
 
   const handleDurationBlur = () => {
-    if (!durationInput.trim()) {
-      return;
-    }
-
+    if (!durationInput.trim()) return;
     const parsed = parseDurationInput(durationInput);
     if (parsed) {
       setDurationInput(parsed.formatted);
       return;
     }
-
-    // eslint-disable-next-line no-alert
     alert("Informe a duracao em minutos ou no formato HH:MM.");
   };
 
-  useEffect(() => {
-    if (!open || !meeting) {
-      return;
+  const toggleWeekDay = (day: string) => {
+    setRecurrenceDaysOfWeek((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  };
+
+  const handleRecurrenceTypeChange = (type: RecurrenceType) => {
+    setRecurrenceType(type);
+    const defaults = buildDateBasedDefaults(date || meeting?.date || "");
+    if (type === "weekly" && recurrenceDaysOfWeek.length === 0) setRecurrenceDaysOfWeek([defaults.recurrenceWeekday]);
+    if (type === "monthly") {
+      setRecurrenceDayOfMonth((current) => current || defaults.recurrenceDayOfMonth);
+      setRecurrenceMonthlyWeek((current) => current || defaults.recurrenceMonthlyWeek);
+      setRecurrenceMonthlyWeekday((current) => current || defaults.recurrenceMonthlyWeekday);
     }
+  };
+
+  useEffect(() => {
+    if (!open || !meeting) return;
+
+    const defaults = buildDateBasedDefaults(meeting.date);
+    const effectiveRecurrenceType = resolveEditorRecurrenceType(meeting);
+    const hasMonthlyWeekdayRule =
+      effectiveRecurrenceType === "monthly" &&
+      meeting.recurrenceMonthlyWeek !== null &&
+      meeting.recurrenceMonthlyWeek !== undefined &&
+      Boolean(meeting.recurrenceMonthlyWeekday);
 
     setTitle(meeting.title);
     setDate(meeting.date);
     setTime(meeting.time);
     setParticipants(meeting.participants.join(", "));
     setDescription(meeting.description ?? "");
-    setDurationInput(
-      typeof meeting.durationMinutes === "number" && meeting.durationMinutes >= 0
-        ? formatDuration(meeting.durationMinutes)
-        : "",
-    );
+    setDurationInput(typeof meeting.durationMinutes === "number" && meeting.durationMinutes >= 0 ? formatDuration(meeting.durationMinutes) : "");
     setMeetingType(meeting.meetingType ?? "presencial");
     setOnlineLink(meeting.onlineLink ?? "");
     setStatus(meeting.status);
+    setRecurrenceType(effectiveRecurrenceType);
+    setRecurrenceDayOfMonth(meeting.recurrenceDayOfMonth ?? defaults.recurrenceDayOfMonth);
+    setRecurrenceDaysOfWeek(meeting.recurrenceDaysOfWeek?.length ? meeting.recurrenceDaysOfWeek : [defaults.recurrenceWeekday]);
+    setMonthlyRecurrenceMode(hasMonthlyWeekdayRule ? "weekday" : "dayOfMonth");
+    setRecurrenceMonthlyWeek((meeting.recurrenceMonthlyWeek as MonthlyRecurrenceWeek | null) ?? defaults.recurrenceMonthlyWeek);
+    setRecurrenceMonthlyWeekday(meeting.recurrenceMonthlyWeekday ?? defaults.recurrenceMonthlyWeekday);
   }, [meeting, open]);
 
   const createdAtLabel = useMemo(() => {
-    if (!meeting) {
-      return "";
-    }
-
+    if (!meeting) return "";
     try {
       return format(new Date(meeting.createdAt), "dd/MM/yyyy 'as' HH:mm");
     } catch {
@@ -101,62 +166,35 @@ export const MeetingDetailsDialog = ({
   }, [meeting]);
 
   const recurrenceSource = useMemo(() => {
-    if (!meeting) {
-      return null;
-    }
+    if (!meeting) return null;
+    if (!meeting.isRecurring) return { ...meeting, date: date || meeting.date };
 
     return {
       ...meeting,
       date: date || meeting.date,
+      recurrenceType,
+      recurrenceDayOfMonth: recurrenceType === "monthly" && monthlyRecurrenceMode === "dayOfMonth" ? recurrenceDayOfMonth : null,
+      recurrenceDaysOfWeek: recurrenceType === "weekly" ? recurrenceDaysOfWeek : null,
+      recurrenceMonthlyWeek: recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday" ? recurrenceMonthlyWeek : null,
+      recurrenceMonthlyWeekday: recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday" ? recurrenceMonthlyWeekday : null,
     };
-  }, [meeting, date]);
+  }, [date, meeting, monthlyRecurrenceMode, recurrenceDayOfMonth, recurrenceDaysOfWeek, recurrenceMonthlyWeek, recurrenceMonthlyWeekday, recurrenceType]);
 
-  const recurrenceSummary = useMemo(() => {
-    if (!recurrenceSource) {
-      return null;
-    }
+  const recurrenceSummary = useMemo(() => (recurrenceSource ? getRecurrenceSummary(recurrenceSource) : null), [recurrenceSource]);
+  const recurrenceDetails = useMemo(() => (recurrenceSource ? getRecurrenceDetails(recurrenceSource) : []), [recurrenceSource]);
 
-    return getRecurrenceSummary(recurrenceSource);
-  }, [recurrenceSource]);
-
-  const recurrenceDetails = useMemo(() => {
-    if (!recurrenceSource) {
-      return [];
-    }
-
-    return getRecurrenceDetails(recurrenceSource);
-  }, [recurrenceSource]);
-
-  if (!meeting) {
-    return null;
-  }
+  if (!meeting) return null;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!title.trim() || !date || !time) return alert("Titulo, data e horario sao obrigatorios.");
+    if (requiresOnlineLink && !onlineLink.trim()) return alert("Informe o link da reuniao para reunioes online.");
+    if (meeting.isRecurring && recurrenceType === "weekly" && recurrenceDaysOfWeek.length === 0) return alert("Selecione pelo menos um dia da semana.");
+    if (meeting.isRecurring && recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday" && !recurrenceMonthlyWeekday) return alert("Selecione o dia da semana da recorrencia mensal.");
 
-    if (!title.trim() || !date || !time) {
-      // eslint-disable-next-line no-alert
-      alert("Titulo, data e horario sao obrigatorios.");
-      return;
-    }
-
-    if (requiresOnlineLink && !onlineLink.trim()) {
-      // eslint-disable-next-line no-alert
-      alert("Informe o link da reuniao para reunioes online.");
-      return;
-    }
-
-    const participantsList = participants
-      .split(",")
-      .map((participant) => participant.trim())
-      .filter((participant) => participant.length > 0);
-
+    const participantsList = participants.split(",").map((participant) => participant.trim()).filter((participant) => participant.length > 0);
     const parsedDuration = durationInput ? parseDurationInput(durationInput) : null;
-    if (durationInput && !parsedDuration) {
-      // eslint-disable-next-line no-alert
-      alert("Informe a duracao em minutos ou no formato HH:MM.");
-      return;
-    }
+    if (durationInput && !parsedDuration) return alert("Informe a duracao em minutos ou no formato HH:MM.");
 
     const payload: MeetingUpdatePayload = {
       id: meeting.id,
@@ -171,19 +209,19 @@ export const MeetingDetailsDialog = ({
       status,
     };
 
+    if (meeting.isRecurring) {
+      payload.recurrenceType = recurrenceType;
+      payload.recurrenceDayOfMonth = recurrenceType === "monthly" && monthlyRecurrenceMode === "dayOfMonth" ? recurrenceDayOfMonth : null;
+      payload.recurrenceDaysOfWeek = recurrenceType === "weekly" ? recurrenceDaysOfWeek : null;
+      payload.recurrenceMonthlyWeek = recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday" ? recurrenceMonthlyWeek : null;
+      payload.recurrenceMonthlyWeekday = recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday" ? recurrenceMonthlyWeekday : null;
+    }
+
     onSave(payload);
   };
 
-  const handleDelete = () => {
-    onDelete(meeting);
-  };
-
-  const statusLabel: Record<MeetingStatus, string> = {
-    pending: "Pendente",
-    approved: "Aprovada",
-    rejected: "Rejeitada",
-  };
-
+  const handleDelete = () => onDelete(meeting);
+  const statusLabel: Record<MeetingStatus, string> = { pending: "Pendente", approved: "Aprovada", rejected: "Rejeitada" };
   const statusStyle: Record<MeetingStatus, string> = {
     pending: "border-amber-200 bg-amber-50 text-amber-700",
     approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -202,9 +240,7 @@ export const MeetingDetailsDialog = ({
               </DialogClose>
             </div>
 
-            <DialogTitle className="text-xl font-semibold text-foreground">
-              Gerenciar reuniao
-            </DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-foreground">Gerenciar reuniao</DialogTitle>
             <DialogDescription className="mt-1 text-sm text-muted-foreground" translate="no">
               Criada em {createdAtLabel}
             </DialogDescription>
@@ -233,18 +269,14 @@ export const MeetingDetailsDialog = ({
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-slate-900">Recorrencia configurada</h3>
-                        <p className="text-xs text-slate-500">
-                          Esta solicitacao usa repeticao automatica.
-                        </p>
+                        <p className="text-xs text-slate-500">Esta solicitacao usa repeticao automatica.</p>
                       </div>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
                       {recurrenceDetails.map((item) => (
                         <div key={item.label} className="rounded-2xl border border-white/80 bg-white/80 px-3.5 py-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-500">
-                            {item.label}
-                          </p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-500">{item.label}</p>
                           <p className="mt-1 text-sm font-medium text-slate-700">{item.value}</p>
                         </div>
                       ))}
@@ -258,13 +290,7 @@ export const MeetingDetailsDialog = ({
                       <FileText className="h-4 w-4 text-primary" />
                       Titulo
                     </Label>
-                    <Input
-                      id="meeting-title"
-                      value={title}
-                      onChange={(event) => setTitle(event.target.value)}
-                      required
-                      className="rounded-xl"
-                    />
+                    <Input id="meeting-title" value={title} onChange={(event) => setTitle(event.target.value)} required className="rounded-xl" />
                   </div>
 
                   <div className="space-y-2">
@@ -288,20 +314,11 @@ export const MeetingDetailsDialog = ({
                   <div className="space-y-2">
                     <Label htmlFor="meeting-date" className="flex items-center gap-2 text-sm font-medium">
                       <Calendar className="h-4 w-4 text-primary" />
-                      {meeting.isRecurring ? "Data de inicio" : "Data"}
+                      {meeting.isRecurring ? "Inicio da serie" : "Data"}
                     </Label>
-                    <Input
-                      id="meeting-date"
-                      type="date"
-                      value={date}
-                      onChange={(event) => setDate(event.target.value)}
-                      required
-                      className="rounded-xl"
-                    />
+                    <Input id="meeting-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required className="rounded-xl" />
                     {meeting.isRecurring && (
-                      <p className="text-xs text-slate-500">
-                        Primeira ocorrencia: {format(parseLocalDate(date || meeting.date), "dd/MM/yyyy")}
-                      </p>
+                      <p className="text-xs text-slate-500">Serie ativa a partir de {format(parseLocalDate(date || meeting.date), "dd/MM/yyyy")}</p>
                     )}
                   </div>
 
@@ -310,16 +327,96 @@ export const MeetingDetailsDialog = ({
                       <Clock className="h-4 w-4 text-primary" />
                       Horario
                     </Label>
-                    <Input
-                      id="meeting-time"
-                      type="time"
-                      value={time}
-                      onChange={(event) => setTime(event.target.value)}
-                      required
-                      className="rounded-xl"
-                    />
+                    <Input id="meeting-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} required className="rounded-xl" />
                   </div>
                 </div>
+
+                {meeting.isRecurring && (
+                  <section className="space-y-4 rounded-[1.35rem] border border-border/50 bg-slate-50/75 p-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <h3 className="text-sm font-semibold text-slate-900">Editar recorrencia</h3>
+                        <p className="text-xs text-slate-500">Ajuste diario, semanal ou mensal e confira o resumo.</p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button type="button" onClick={() => handleRecurrenceTypeChange("daily")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${recurrenceType === "daily" ? "border-violet-500/40 bg-violet-600 text-white shadow-[0_12px_24px_-18px_rgba(109,40,217,0.6)]" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Diario</button>
+                        <button type="button" onClick={() => handleRecurrenceTypeChange("weekly")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${recurrenceType === "weekly" ? "border-violet-500/40 bg-violet-600 text-white shadow-[0_12px_24px_-18px_rgba(109,40,217,0.6)]" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Semanal</button>
+                        <button type="button" onClick={() => handleRecurrenceTypeChange("monthly")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${recurrenceType === "monthly" ? "border-violet-500/40 bg-violet-600 text-white shadow-[0_12px_24px_-18px_rgba(109,40,217,0.6)]" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Mensal</button>
+                      </div>
+                    </div>
+
+                    {recurrenceType === "daily" && (
+                      <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-700">
+                        A reuniao vai se repetir todos os dias a partir da data de inicio.
+                      </div>
+                    )}
+
+                    {recurrenceType === "weekly" && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Repetir nos dias:</p>
+                        <div className="grid grid-cols-7 gap-2">
+                          {RECURRENCE_WEEKDAYS.map((day) => (
+                            <button key={day} type="button" onClick={() => toggleWeekDay(day)} className={`rounded-xl py-2.5 text-xs font-medium transition-all ${recurrenceDaysOfWeek.includes(day) ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{day}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {recurrenceType === "monthly" && (
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Modelo mensal:</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Escolha entre dia fixo ou semana + dia da semana.</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <button type="button" onClick={() => setMonthlyRecurrenceMode("dayOfMonth")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${monthlyRecurrenceMode === "dayOfMonth" ? "border-primary/40 bg-primary text-primary-foreground shadow-sm" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Dia fixo</button>
+                            <button type="button" onClick={() => setMonthlyRecurrenceMode("weekday")} className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-all ${monthlyRecurrenceMode === "weekday" ? "border-primary/40 bg-primary text-primary-foreground shadow-sm" : "border-border/40 bg-background text-muted-foreground hover:border-border"}`}>Semana + dia</button>
+                          </div>
+                        </div>
+
+                        {monthlyRecurrenceMode === "dayOfMonth" && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia do mes:</p>
+                            <div className="grid grid-cols-7 gap-1.5">
+                              {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                                <button key={day} type="button" onClick={() => setRecurrenceDayOfMonth(day)} className={`flex aspect-square items-center justify-center rounded-lg text-xs font-medium transition-all ${recurrenceDayOfMonth === day ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{day}</button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {monthlyRecurrenceMode === "weekday" && (
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Semana do mes:</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {MONTHLY_RECURRENCE_WEEKS.map((week) => (
+                                  <button key={week} type="button" onClick={() => setRecurrenceMonthlyWeek(week)} className={`rounded-xl px-3 py-2 text-xs font-medium transition-all ${recurrenceMonthlyWeek === week ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{MONTHLY_WEEK_LABELS[week]}</button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Dia da semana:</p>
+                              <div className="grid grid-cols-4 gap-2">
+                                {RECURRENCE_WEEKDAYS.map((day) => (
+                                  <button key={day} type="button" onClick={() => setRecurrenceMonthlyWeekday(day)} className={`rounded-xl px-3 py-2 text-xs font-medium transition-all ${recurrenceMonthlyWeekday === day ? "bg-primary text-primary-foreground shadow-sm" : "border border-border/40 bg-background text-muted-foreground hover:border-primary/30 hover:text-foreground"}`}>{day}</button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {recurrenceSummary && (
+                      <div className="rounded-2xl border border-violet-200/70 bg-violet-50/80 px-4 py-3 text-sm text-violet-700">
+                        <span className="font-medium">Resumo:</span> {recurrenceSummary}
+                      </div>
+                    )}
+                  </section>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="meeting-participants" className="flex items-center gap-2 text-sm font-medium">

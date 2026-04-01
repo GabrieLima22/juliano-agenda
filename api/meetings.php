@@ -24,6 +24,202 @@ function meeting_type_requires_online_link(string $meetingType): bool {
     return in_array($meetingType, ['zoom', 'meet'], true);
 }
 
+function allowed_recurrence_types(): array {
+    return ['daily', 'weekly', 'monthly'];
+}
+
+function allowed_monthly_weeks(): array {
+    return [1, 2, 3, 4, 5, -1];
+}
+
+function normalize_weekday_abbr(?string $abbr): ?string {
+    $abbr = trim((string)$abbr);
+    if ($abbr === '') {
+        return null;
+    }
+
+    $map = [
+        'Dom' => 'Dom',
+        'Seg' => 'Seg',
+        'Ter' => 'Ter',
+        'Qua' => 'Qua',
+        'Qui' => 'Qui',
+        'Sex' => 'Sex',
+        'Sab' => 'Sab',
+        'SÃ¡b' => 'Sab',
+        'Sabado' => 'Sab',
+        'SÃ¡bado' => 'Sab',
+    ];
+
+    return $map[$abbr] ?? null;
+}
+
+function normalize_weekday_list(?array $days): array {
+    if (!is_array($days)) {
+        return [];
+    }
+
+    $normalized = [];
+    foreach ($days as $day) {
+        if (!is_string($day)) {
+            continue;
+        }
+
+        $weekday = normalize_weekday_abbr($day);
+        if ($weekday !== null) {
+            $normalized[$weekday] = $weekday;
+        }
+    }
+
+    $order = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
+    usort($normalized, static function (string $a, string $b) use ($order): int {
+        return array_search($a, $order, true) <=> array_search($b, $order, true);
+    });
+
+    return array_values($normalized);
+}
+
+function parse_optional_int(mixed $value): ?int {
+    if ($value === null || $value === '') {
+        return null;
+    }
+
+    if (is_int($value)) {
+        return $value;
+    }
+
+    if (is_numeric($value)) {
+        return (int)$value;
+    }
+
+    return null;
+}
+
+function decode_days_json(?string $json): array {
+    if ($json === null || $json === '') {
+        return [];
+    }
+
+    $decoded = json_decode($json, true);
+    return is_array($decoded) ? $decoded : [];
+}
+
+function resolve_recurrence_state(array $data, ?array $existing = null): array {
+    $isRecurring = array_key_exists('isRecurring', $data)
+        ? !empty($data['isRecurring'])
+        : ($existing !== null ? !empty($existing['is_recurring']) : false);
+
+    if (!$isRecurring) {
+        return [
+            'isRecurring' => 0,
+            'recurrenceType' => null,
+            'recurrenceDayOfMonth' => null,
+            'recurrenceDaysOfWeek' => null,
+            'recurrenceDaysOfWeekList' => null,
+            'recurrenceMonthlyWeek' => null,
+            'recurrenceMonthlyWeekday' => null,
+        ];
+    }
+
+    $baseDate = trim((string)($data['date'] ?? ($existing['date'] ?? '')));
+    $rawType = array_key_exists('recurrenceType', $data)
+        ? trim((string)($data['recurrenceType'] ?? ''))
+        : trim((string)($existing['recurrence_type'] ?? ''));
+
+    $dayOfMonth = array_key_exists('recurrenceDayOfMonth', $data)
+        ? parse_optional_int($data['recurrenceDayOfMonth'])
+        : parse_optional_int($existing['recurrence_day_of_month'] ?? null);
+
+    $daysOfWeek = array_key_exists('recurrenceDaysOfWeek', $data)
+        ? (is_array($data['recurrenceDaysOfWeek']) ? $data['recurrenceDaysOfWeek'] : [])
+        : decode_days_json($existing['recurrence_days_of_week'] ?? null);
+
+    $monthlyWeek = array_key_exists('recurrenceMonthlyWeek', $data)
+        ? parse_optional_int($data['recurrenceMonthlyWeek'])
+        : parse_optional_int($existing['recurrence_monthly_week'] ?? null);
+
+    $monthlyWeekday = array_key_exists('recurrenceMonthlyWeekday', $data)
+        ? normalize_weekday_abbr(is_string($data['recurrenceMonthlyWeekday']) ? $data['recurrenceMonthlyWeekday'] : null)
+        : normalize_weekday_abbr($existing['recurrence_monthly_weekday'] ?? null);
+
+    // Compatibilidade com o formato antigo: "daily" + dia do mes era mensal.
+    if ($rawType === 'daily' && $dayOfMonth !== null && $dayOfMonth >= 1) {
+        $rawType = 'monthly';
+    }
+
+    if (!in_array($rawType, allowed_recurrence_types(), true)) {
+        throw new InvalidArgumentException('Invalid recurrence type');
+    }
+
+    if ($rawType === 'daily') {
+        return [
+            'isRecurring' => 1,
+            'recurrenceType' => 'daily',
+            'recurrenceDayOfMonth' => null,
+            'recurrenceDaysOfWeek' => null,
+            'recurrenceDaysOfWeekList' => null,
+            'recurrenceMonthlyWeek' => null,
+            'recurrenceMonthlyWeekday' => null,
+        ];
+    }
+
+    if ($rawType === 'weekly') {
+        $normalizedDays = normalize_weekday_list($daysOfWeek);
+        if (empty($normalizedDays)) {
+            throw new InvalidArgumentException('Select at least one weekday for weekly recurrence');
+        }
+
+        return [
+            'isRecurring' => 1,
+            'recurrenceType' => 'weekly',
+            'recurrenceDayOfMonth' => null,
+            'recurrenceDaysOfWeek' => json_encode($normalizedDays, JSON_UNESCAPED_UNICODE),
+            'recurrenceDaysOfWeekList' => $normalizedDays,
+            'recurrenceMonthlyWeek' => null,
+            'recurrenceMonthlyWeekday' => null,
+        ];
+    }
+
+    $hasMonthlyWeekdayRule = $monthlyWeek !== null || $monthlyWeekday !== null;
+    if ($hasMonthlyWeekdayRule) {
+        if (
+            $monthlyWeek === null ||
+            $monthlyWeekday === null ||
+            !in_array($monthlyWeek, allowed_monthly_weeks(), true)
+        ) {
+            throw new InvalidArgumentException('Invalid monthly weekday recurrence');
+        }
+
+        return [
+            'isRecurring' => 1,
+            'recurrenceType' => 'monthly',
+            'recurrenceDayOfMonth' => null,
+            'recurrenceDaysOfWeek' => null,
+            'recurrenceDaysOfWeekList' => null,
+            'recurrenceMonthlyWeek' => $monthlyWeek,
+            'recurrenceMonthlyWeekday' => $monthlyWeekday,
+        ];
+    }
+
+    if ($dayOfMonth === null && preg_match('/^\d{4}-\d{2}-\d{2}$/', $baseDate)) {
+        $dayOfMonth = (int)date('j', strtotime($baseDate));
+    }
+
+    if ($dayOfMonth === null || $dayOfMonth < 1 || $dayOfMonth > 31) {
+        throw new InvalidArgumentException('Invalid monthly day recurrence');
+    }
+
+    return [
+        'isRecurring' => 1,
+        'recurrenceType' => 'monthly',
+        'recurrenceDayOfMonth' => $dayOfMonth,
+        'recurrenceDaysOfWeek' => null,
+        'recurrenceDaysOfWeekList' => null,
+        'recurrenceMonthlyWeek' => null,
+        'recurrenceMonthlyWeekday' => null,
+    ];
+}
+
 function get_requester_meeting_ids(): array {
     $ids = $_SESSION['meeting_request_ids'] ?? [];
     if (!is_array($ids)) {
@@ -123,13 +319,12 @@ function format_meeting_row(array $row): array {
     $isRecurring = !empty($row['is_recurring']);
     $recurrenceType = $row['recurrence_type'] ?? null;
     $recurrenceDayOfMonth = isset($row['recurrence_day_of_month']) ? (int)$row['recurrence_day_of_month'] : null;
-    $recurrenceDaysOfWeek = null;
-    if (!empty($row['recurrence_days_of_week'])) {
-        $decoded = json_decode($row['recurrence_days_of_week'], true);
-        if (is_array($decoded)) {
-            $recurrenceDaysOfWeek = $decoded;
-        }
+    $recurrenceDaysOfWeek = decode_days_json($row['recurrence_days_of_week'] ?? null);
+    if (empty($recurrenceDaysOfWeek)) {
+        $recurrenceDaysOfWeek = null;
     }
+    $recurrenceMonthlyWeek = isset($row['recurrence_monthly_week']) ? (int)$row['recurrence_monthly_week'] : null;
+    $recurrenceMonthlyWeekday = normalize_weekday_abbr($row['recurrence_monthly_weekday'] ?? null);
 
     return [
         'id' => $row['id'],
@@ -145,58 +340,115 @@ function format_meeting_row(array $row): array {
         'recurrenceType' => $isRecurring ? $recurrenceType : null,
         'recurrenceDayOfMonth' => $isRecurring ? $recurrenceDayOfMonth : null,
         'recurrenceDaysOfWeek' => $isRecurring ? $recurrenceDaysOfWeek : null,
+        'recurrenceMonthlyWeek' => $isRecurring ? $recurrenceMonthlyWeek : null,
+        'recurrenceMonthlyWeekday' => $isRecurring ? $recurrenceMonthlyWeekday : null,
         'createdAt' => $row['created_at'],
         'status' => $row['status'],
     ];
 }
 
-/**
- * Map day-of-week abbreviations (pt-BR) to PHP numeric day (0=Sun..6=Sat).
- */
 function weekday_abbr_to_number(string $abbr): ?int {
+    $abbr = normalize_weekday_abbr($abbr);
+    if ($abbr === null) {
+        return null;
+    }
+
     $map = [
-        'Dom' => 0, 'Seg' => 1, 'Ter' => 2, 'Qua' => 3,
-        'Qui' => 4, 'Sex' => 5, 'Sab' => 6, 'Sáb' => 6,
+        'Dom' => 0,
+        'Seg' => 1,
+        'Ter' => 2,
+        'Qua' => 3,
+        'Qui' => 4,
+        'Sex' => 5,
+        'Sab' => 6,
     ];
+
     return $map[$abbr] ?? null;
 }
 
-/**
- * Check if a recurring meeting matches a given date string (YYYY-MM-DD).
- */
+function get_effective_recurrence_type(array $row): ?string {
+    $type = trim((string)($row['recurrence_type'] ?? ''));
+    if ($type === 'daily' && !empty($row['recurrence_day_of_month'])) {
+        return 'monthly';
+    }
+
+    return in_array($type, allowed_recurrence_types(), true) ? $type : null;
+}
+
+function get_monthly_day_from_row(array $row): int {
+    $dayOfMonth = (int)($row['recurrence_day_of_month'] ?? 0);
+    if ($dayOfMonth >= 1 && $dayOfMonth <= 31) {
+        return $dayOfMonth;
+    }
+
+    return (int)date('j', strtotime((string)($row['date'] ?? 'now')));
+}
+
+function get_weekday_occurrence_in_month(string $dateStr): int {
+    return intdiv(((int)date('j', strtotime($dateStr))) - 1, 7) + 1;
+}
+
+function is_last_weekday_of_month(string $dateStr): bool {
+    return date('n', strtotime($dateStr . ' +7 days')) !== date('n', strtotime($dateStr));
+}
+
 function recurring_matches_date(array $row, string $dateStr): bool {
     if (empty($row['is_recurring'])) {
         return false;
     }
+
     $startDate = $row['date'] ?? '';
     if ($dateStr < $startDate) {
         return false;
     }
-    $type = $row['recurrence_type'] ?? '';
-    if ($type === 'daily') {
-        $dayOfMonth = (int)($row['recurrence_day_of_month'] ?? 0);
-        return $dayOfMonth === (int)date('j', strtotime($dateStr));
+
+    $type = get_effective_recurrence_type($row);
+    if ($type === null) {
+        return false;
     }
+
+    if ($type === 'daily') {
+        return true;
+    }
+
     if ($type === 'weekly') {
-        $daysJson = $row['recurrence_days_of_week'] ?? '[]';
-        $days = json_decode($daysJson, true);
-        if (!is_array($days)) {
+        $days = decode_days_json($row['recurrence_days_of_week'] ?? null);
+        if (empty($days)) {
             return false;
         }
-        $requestedDow = (int)date('w', strtotime($dateStr)); // 0=Sun
+
+        $requestedDow = (int)date('w', strtotime($dateStr));
         foreach ($days as $abbr) {
-            if (weekday_abbr_to_number($abbr) === $requestedDow) {
+            if (is_string($abbr) && weekday_abbr_to_number($abbr) === $requestedDow) {
                 return true;
             }
         }
         return false;
     }
-    return false;
+
+    $requestedDow = (int)date('w', strtotime($dateStr));
+    $monthlyWeek = isset($row['recurrence_monthly_week']) ? (int)$row['recurrence_monthly_week'] : null;
+    $monthlyWeekday = normalize_weekday_abbr($row['recurrence_monthly_weekday'] ?? null);
+
+    if (
+        $monthlyWeek !== null &&
+        $monthlyWeekday !== null &&
+        in_array($monthlyWeek, allowed_monthly_weeks(), true)
+    ) {
+        if (weekday_abbr_to_number($monthlyWeekday) !== $requestedDow) {
+            return false;
+        }
+
+        if ($monthlyWeek === -1) {
+            return is_last_weekday_of_month($dateStr);
+        }
+
+        return get_weekday_occurrence_in_month($dateStr) === $monthlyWeek;
+    }
+
+    return get_monthly_day_from_row($row) === (int)date('j', strtotime($dateStr));
 }
 
-/**
- * Fetch all recurring meetings that are approved (or optionally all statuses).
- */
 function get_recurring_meetings_for_date(PDO $pdo, string $dateStr, bool $includeAll): array {
     $statusClause = $includeAll ? '' : " AND status = 'approved'";
     $stmt = $pdo->prepare("SELECT * FROM meetings WHERE is_recurring = 1{$statusClause}");
@@ -276,19 +528,6 @@ if ($method === 'POST') {
     $duration = isset($data['durationMinutes']) ? (int)$data['durationMinutes'] : null;
     $meetingType = normalize_meeting_type(isset($data['meetingType']) ? (string)$data['meetingType'] : 'presencial');
     $onlineLink = isset($data['onlineLink']) ? trim((string)$data['onlineLink']) : null;
-    $isRecurring = !empty($data['isRecurring']) ? 1 : 0;
-    $recurrenceType = null;
-    $recurrenceDayOfMonth = null;
-    $recurrenceDaysOfWeek = null;
-    if ($isRecurring) {
-        $recurrenceType = in_array($data['recurrenceType'] ?? '', ['daily', 'weekly'], true) ? $data['recurrenceType'] : null;
-        if ($recurrenceType === 'daily') {
-            $recurrenceDayOfMonth = isset($data['recurrenceDayOfMonth']) ? (int)$data['recurrenceDayOfMonth'] : null;
-        }
-        if ($recurrenceType === 'weekly' && isset($data['recurrenceDaysOfWeek']) && is_array($data['recurrenceDaysOfWeek'])) {
-            $recurrenceDaysOfWeek = json_encode($data['recurrenceDaysOfWeek'], JSON_UNESCAPED_UNICODE);
-        }
-    }
     $createdAt = now_datetime();
     $status = 'pending';
 
@@ -316,10 +555,17 @@ if ($method === 'POST') {
         $onlineLink = null;
     }
 
+    try {
+        $recurrenceState = resolve_recurrence_state($data);
+    } catch (InvalidArgumentException $exception) {
+        send_json(['error' => $exception->getMessage()], 400);
+        exit;
+    }
+
     $hasRecurringCol = has_recurring_column($pdo);
 
     if ($hasRecurringCol) {
-        $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, is_recurring, recurrence_type, recurrence_day_of_month, recurrence_days_of_week, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :is_recurring, :recurrence_type, :recurrence_day_of_month, :recurrence_days_of_week, :created_at, :status)');
+        $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, is_recurring, recurrence_type, recurrence_day_of_month, recurrence_days_of_week, recurrence_monthly_week, recurrence_monthly_weekday, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :is_recurring, :recurrence_type, :recurrence_day_of_month, :recurrence_days_of_week, :recurrence_monthly_week, :recurrence_monthly_weekday, :created_at, :status)');
         $stmt->execute([
             ':id' => $id,
             ':title' => $title,
@@ -331,10 +577,12 @@ if ($method === 'POST') {
             ':duration_minutes' => $duration,
             ':meeting_type' => $meetingType,
             ':online_link' => $onlineLink,
-            ':is_recurring' => $isRecurring,
-            ':recurrence_type' => $recurrenceType,
-            ':recurrence_day_of_month' => $recurrenceDayOfMonth,
-            ':recurrence_days_of_week' => $recurrenceDaysOfWeek,
+            ':is_recurring' => $recurrenceState['isRecurring'],
+            ':recurrence_type' => $recurrenceState['recurrenceType'],
+            ':recurrence_day_of_month' => $recurrenceState['recurrenceDayOfMonth'],
+            ':recurrence_days_of_week' => $recurrenceState['recurrenceDaysOfWeek'],
+            ':recurrence_monthly_week' => $recurrenceState['recurrenceMonthlyWeek'],
+            ':recurrence_monthly_weekday' => $recurrenceState['recurrenceMonthlyWeekday'],
             ':created_at' => $createdAt,
             ':status' => $status,
         ]);
@@ -368,10 +616,12 @@ if ($method === 'POST') {
         'durationMinutes' => $duration,
         'meetingType' => $meetingType,
         'onlineLink' => $onlineLink,
-        'isRecurring' => (bool)$isRecurring,
-        'recurrenceType' => $recurrenceType,
-        'recurrenceDayOfMonth' => $recurrenceDayOfMonth,
-        'recurrenceDaysOfWeek' => $recurrenceDaysOfWeek ? json_decode($recurrenceDaysOfWeek, true) : null,
+        'isRecurring' => (bool)$recurrenceState['isRecurring'],
+        'recurrenceType' => $recurrenceState['recurrenceType'],
+        'recurrenceDayOfMonth' => $recurrenceState['recurrenceDayOfMonth'],
+        'recurrenceDaysOfWeek' => $recurrenceState['recurrenceDaysOfWeekList'],
+        'recurrenceMonthlyWeek' => $recurrenceState['recurrenceMonthlyWeek'],
+        'recurrenceMonthlyWeekday' => $recurrenceState['recurrenceMonthlyWeekday'],
         'createdAt' => $createdAt,
         'status' => $status,
     ], 201);
@@ -529,6 +779,44 @@ if ($method === 'PATCH') {
     if ($updateOnlineLink) {
         $fields[] = 'online_link = :online_link';
         $params[':online_link'] = $onlineLink;
+    }
+
+    $recurrenceKeys = [
+        'isRecurring',
+        'recurrenceType',
+        'recurrenceDayOfMonth',
+        'recurrenceDaysOfWeek',
+        'recurrenceMonthlyWeek',
+        'recurrenceMonthlyWeekday',
+    ];
+    $shouldUpdateRecurrence = false;
+    foreach ($recurrenceKeys as $key) {
+        if (array_key_exists($key, $data)) {
+            $shouldUpdateRecurrence = true;
+            break;
+        }
+    }
+
+    if ($shouldUpdateRecurrence) {
+        try {
+            $recurrenceState = resolve_recurrence_state($data, $existing);
+        } catch (InvalidArgumentException $exception) {
+            send_json(['error' => $exception->getMessage()], 400);
+            exit;
+        }
+
+        $fields[] = 'is_recurring = :is_recurring';
+        $fields[] = 'recurrence_type = :recurrence_type';
+        $fields[] = 'recurrence_day_of_month = :recurrence_day_of_month';
+        $fields[] = 'recurrence_days_of_week = :recurrence_days_of_week';
+        $fields[] = 'recurrence_monthly_week = :recurrence_monthly_week';
+        $fields[] = 'recurrence_monthly_weekday = :recurrence_monthly_weekday';
+        $params[':is_recurring'] = $recurrenceState['isRecurring'];
+        $params[':recurrence_type'] = $recurrenceState['recurrenceType'];
+        $params[':recurrence_day_of_month'] = $recurrenceState['recurrenceDayOfMonth'];
+        $params[':recurrence_days_of_week'] = $recurrenceState['recurrenceDaysOfWeek'];
+        $params[':recurrence_monthly_week'] = $recurrenceState['recurrenceMonthlyWeek'];
+        $params[':recurrence_monthly_weekday'] = $recurrenceState['recurrenceMonthlyWeekday'];
     }
 
     if (empty($fields)) {

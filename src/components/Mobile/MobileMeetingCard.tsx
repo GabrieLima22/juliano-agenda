@@ -1,6 +1,7 @@
 import { Clock, ChevronDown, ChevronUp, Link as LinkIcon, MapPin, RefreshCw, Timer, Users, Video } from "lucide-react";
 import { formatDuration } from "@/lib/duration";
 import { Meeting, getMeetingTypeLabel, meetingTypeRequiresOnlineLink } from "@/types/meeting";
+import { getRecurrenceSummary } from "@/lib/recurrence";
 
 interface MobileMeetingCardProps {
   meeting: Meeting;
@@ -91,6 +92,7 @@ export const MobileMeetingCard = ({
   const meetingType = meeting.meetingType ?? "presencial";
   const hasOnlineLink = meetingTypeRequiresOnlineLink(meetingType) && Boolean(meeting.onlineLink);
   const participants = meeting.participants.slice(0, 3);
+  const recurrenceSummary = getRecurrenceSummary(meeting);
 
   return (
     <article
@@ -132,6 +134,13 @@ export const MobileMeetingCard = ({
               <span>{getMeetingTypeLabel(meetingType)}</span>
             </span>
           </div>
+
+          {meeting.isRecurring && recurrenceSummary && (
+            <div className="mt-3 inline-flex items-start gap-1.5 rounded-xl border border-violet-200/70 bg-violet-50/80 px-3 py-2 text-[0.78rem] text-violet-700">
+              <RefreshCw className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{recurrenceSummary}</span>
+            </div>
+          )}
         </div>
 
         <span className="mt-0.5 text-slate-400 transition-colors duration-300 hover:text-slate-600">

@@ -33,8 +33,8 @@ const ADMIN_TABS: Array<{
   label: string;
   counterTone?: "blue" | "violet";
 }> = [
-  { value: "calendar", label: "Calendario" },
-  { value: "pending", label: "Solicitacoes", counterTone: "blue" },
+  { value: "calendar", label: "Calendário" },
+  { value: "pending", label: "Solicitações", counterTone: "blue" },
   { value: "recurring", label: "Recorrentes", counterTone: "violet" },
 ];
 
@@ -215,7 +215,7 @@ const Index = () => {
     setIsAdmin(false);
     setAdminView("calendar");
     await loadMeetings();
-    toast.success("Voce saiu do modo administrador.");
+    toast.success("Você saiu do modo administrador.");
   };
 
   const handleMeetingSelect = (meeting: Meeting) => {
@@ -234,14 +234,14 @@ const Index = () => {
     await updateMeetingStatus(id, "approved");
     await loadMeetings();
     await loadPendingMeetings();
-    toast.success("Reuniao aprovada com sucesso.");
+    toast.success("Reunião aprovada com sucesso.");
   };
 
   const handleRejectMeeting = async (id: string) => {
     await updateMeetingStatus(id, "rejected");
     await loadMeetings();
     await loadPendingMeetings();
-    toast.success("Solicitacao rejeitada.");
+    toast.success("Solicitação rejeitada.");
   };
 
   const handleSaveMeetingChanges = async (changes: MeetingUpdatePayload) => {
@@ -256,11 +256,11 @@ const Index = () => {
       if (isAdmin) {
         await loadPendingMeetings();
       }
-      toast.success("Reuniao atualizada com sucesso.");
+      toast.success("Reunião atualizada com sucesso.");
       setShowMeetingDetails(false);
       setSelectedMeetingForAdmin(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao atualizar a reuniao.";
+      const message = error instanceof Error ? error.message : "Erro ao atualizar a reunião.";
       toast.error(message);
     } finally {
       setIsSavingMeeting(false);
@@ -270,8 +270,8 @@ const Index = () => {
   const handleDeleteMeeting = async (meeting: Meeting) => {
     const confirmed = window.confirm(
       meeting.isRecurring
-        ? `Deseja realmente excluir a serie recorrente "${meeting.title}"?`
-        : `Deseja realmente excluir a reuniao "${meeting.title}"?`,
+        ? `Deseja realmente excluir a série recorrente "${meeting.title}"?`
+        : `Deseja realmente excluir a reunião "${meeting.title}"?`,
     );
     if (!confirmed) {
       return;
@@ -284,11 +284,11 @@ const Index = () => {
       if (isAdmin) {
         await loadPendingMeetings();
       }
-      toast.success("Reuniao excluida com sucesso.");
+      toast.success("Reunião excluída com sucesso.");
       setShowMeetingDetails(false);
       setSelectedMeetingForAdmin(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao excluir a reuniao.";
+      const message = error instanceof Error ? error.message : "Erro ao excluir a reunião.";
       toast.error(message);
     } finally {
       setIsDeletingMeeting(false);
@@ -338,7 +338,7 @@ const Index = () => {
                 <button
                   type="button"
                   className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-white/90 bg-gradient-to-r from-indigo-500 to-teal-400 text-white shadow-[0_24px_46px_-18px_rgba(79,70,229,0.72)] transition duration-300 active:scale-95"
-                  aria-label="Criar nova reuniao"
+                  aria-label="Criar nova reunião"
                 >
                   <Plus className="h-6 w-6" />
                 </button>

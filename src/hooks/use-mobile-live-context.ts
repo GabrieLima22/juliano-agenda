@@ -72,12 +72,12 @@ const getDistanceKm = (from: CoordinatesSnapshot, to: CoordinatesSnapshot) => {
 
 const getGeolocationErrorMessage = (error: GeolocationPositionError) => {
   if (error.code === error.PERMISSION_DENIED) {
-    return "Permita a localizacao no navegador para exibir clima e cidade.";
+    return "Permita a localização no navegador para exibir clima e cidade.";
   }
   if (error.code === error.TIMEOUT) {
-    return "Nao foi possivel obter a localizacao dentro do tempo esperado.";
+    return "Não foi possível obter a localização dentro do tempo esperado.";
   }
-  return "Nao foi possivel atualizar a localizacao do aparelho.";
+  return "Não foi possível atualizar a localização do aparelho.";
 };
 
 export const useMobileLiveContext = (enabled: boolean) => {
@@ -155,7 +155,7 @@ export const useMobileLiveContext = (enabled: boolean) => {
       }
 
       const message =
-        error instanceof Error ? error.message : "Nao foi possivel carregar clima e localizacao.";
+        error instanceof Error ? error.message : "Não foi possível carregar clima e localização.";
 
       setState((current) => ({
         ...current,
@@ -175,7 +175,7 @@ export const useMobileLiveContext = (enabled: boolean) => {
         ...current,
         permission: "unsupported",
         isLoading: false,
-        error: "Geolocalizacao nao suportada neste dispositivo.",
+        error: "Geolocalização não suportada neste dispositivo.",
       }));
       return;
     }
@@ -185,7 +185,7 @@ export const useMobileLiveContext = (enabled: boolean) => {
         ...current,
         permission: "unsupported",
         isLoading: false,
-        error: "A localizacao em tempo real requer HTTPS no celular.",
+        error: "A localização em tempo real requer HTTPS no celular.",
       }));
       return;
     }

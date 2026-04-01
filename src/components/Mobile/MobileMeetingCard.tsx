@@ -156,7 +156,7 @@ export const MobileMeetingCard = ({
         <div className="overflow-hidden pl-2">
           <div className="border-t border-slate-200/70 pt-4">
             <p className="mb-3 text-sm leading-relaxed text-slate-600">
-              {meeting.description || "Sem pauta cadastrada para esta reuniao."}
+              {meeting.description || "Sem pauta cadastrada para esta reunião."}
             </p>
 
             <div className="flex items-center justify-between gap-3">
@@ -180,7 +180,7 @@ export const MobileMeetingCard = ({
               {typeof meeting.durationMinutes === "number" && meeting.durationMinutes > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-400">
                   <Timer className="h-[0.85rem] w-[0.85rem]" />
-                  Duracao: {formatDuration(meeting.durationMinutes)}
+                  Duração: {formatDuration(meeting.durationMinutes)}
                 </span>
               )}
             </div>
@@ -211,7 +211,7 @@ export const MobileMeetingCard = ({
                 <div className="flex flex-wrap items-center gap-2">
                 {meeting.status !== "approved" && (
                   <span className={`rounded-full px-3 py-1 text-[0.72rem] font-semibold ${tone.badge}`}>
-                    {meeting.status === "pending" ? "Aguardando aprovacao" : "Recusada"}
+                    {meeting.status === "pending" ? "Aguardando aprovação" : "Recusada"}
                   </span>
                 )}
                   {onManage && (

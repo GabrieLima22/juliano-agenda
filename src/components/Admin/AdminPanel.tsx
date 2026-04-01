@@ -33,17 +33,17 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-lg font-semibold text-foreground">Solicitacoes Pendentes</h2>
+        <h2 className="text-lg font-semibold text-foreground">Solicitações Pendentes</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {meetings.length} {meetings.length === 1 ? "solicitacao" : "solicitacoes"} aguardando
+          {meetings.length} {meetings.length === 1 ? "solicitação" : "solicitações"} aguardando
         </p>
       </div>
 
       {meetings.length === 0 ? (
         <div className="rounded-xl border border-white/70 bg-white/40 p-12 text-center backdrop-blur-sm">
           <Inbox className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhuma solicitacao pendente</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">Todas as reunioes foram processadas</p>
+          <p className="text-sm text-muted-foreground">Nenhuma solicitação pendente</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">Todas as reuniões foram processadas</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -102,7 +102,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                         {recurrenceSummary && (
                           <div className="rounded-2xl border border-violet-200/70 bg-violet-50/80 px-4 py-3">
                             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-500">
-                              Recorrencia
+                              Recorrência
                             </p>
                             <div className="flex items-start gap-2 text-sm text-violet-700">
                               <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
@@ -133,7 +133,7 @@ export const AdminPanel = ({ meetings, onApprove, onReject, onOpenDetails }: Adm
                         className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-3 py-1.5 text-sm font-medium text-sky-700 transition-colors hover:bg-sky-100"
                       >
                         <LinkIcon className="h-3.5 w-3.5" />
-                        Abrir link da reuniao
+                        Abrir link da reunião
                       </a>
                     )}
 

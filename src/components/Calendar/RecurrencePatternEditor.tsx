@@ -43,7 +43,7 @@ const MONTHLY_WEEK_LABELS: Record<MonthlyRecurrenceWeek, string> = {
   3: "3a",
   4: "4a",
   5: "5a",
-  [-1]: "Ultima",
+  [-1]: "Última",
 };
 
 const EDITABLE_RECURRENCE_TYPES = ["weekly", "monthly"] as const;
@@ -55,12 +55,12 @@ const RECURRENCE_TYPE_CONTENT: Record<
   weekly: {
     title: "Semanal",
     description: "Escolha um ou mais dias fixos da semana.",
-    helper: "Bom para agendas como toda segunda e quinta, sempre no mesmo horario.",
+    helper: "Bom para agendas como toda segunda e quinta, sempre no mesmo horário.",
   },
   monthly: {
     title: "Mensal",
-    description: "Monte uma ou varias regras dentro do mesmo mes.",
-    helper: "Ideal para combinacoes como 1a segunda, 3a quinta, dia 15 ou ultima quinta.",
+    description: "Monte uma ou várias regras dentro do mesmo mês.",
+    helper: "Ideal para combinações como 1a segunda, 3a quinta, dia 15 ou última quinta.",
   },
 };
 
@@ -69,14 +69,14 @@ const MONTHLY_MODE_CONTENT: Record<
   { title: string; description: string; example: string }
 > = {
   dayOfMonth: {
-    title: "Dia fixo do mes",
-    description: "A reuniao acontece sempre no mesmo numero do calendario.",
+    title: "Dia fixo do mês",
+    description: "A reunião acontece sempre no mesmo número do calendário.",
     example: "Ex.: dia 15 ou dia 31",
   },
   weekday: {
     title: "Semana + dia da semana",
-    description: "A reuniao acontece por posicao dentro do mes.",
-    example: "Ex.: 1a segunda, 3a quinta ou ultima quinta",
+    description: "A reunião acontece por posição dentro do mês.",
+    example: "Ex.: 1a segunda, 3a quinta ou última quinta",
   },
 };
 
@@ -106,8 +106,8 @@ export const RecurrencePatternEditor = ({
   onAddMonthlyRule,
   onRemoveMonthlyRule,
   recurrenceSummary,
-  heading = "Como essa reuniao deve se repetir?",
-  description = "Primeiro escolha a frequencia. Depois definimos a regra exata.",
+  heading = "Como essa reunião deve se repetir?",
+  description = "Primeiro escolha a frequência. Depois definimos a regra exata.",
 }: RecurrencePatternEditorProps) => {
   const typeContent =
     recurrenceType === "monthly" ? RECURRENCE_TYPE_CONTENT.monthly : RECURRENCE_TYPE_CONTENT.weekly;
@@ -133,7 +133,7 @@ export const RecurrencePatternEditor = ({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1">
           <span className="inline-flex w-fit rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-600">
-            Recorrencia
+            Recorrência
           </span>
           <h3 className="text-sm font-semibold text-slate-900">{heading}</h3>
           <p className="max-w-[38rem] text-xs leading-5 text-slate-500">{description}</p>
@@ -141,7 +141,7 @@ export const RecurrencePatternEditor = ({
 
         <div className="inline-flex items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600">
           <Calendar className="h-3.5 w-3.5 text-violet-500" />
-          Inicio em {getStartDateLabel(startDate)}
+          Início em {getStartDateLabel(startDate)}
         </div>
       </div>
 
@@ -195,13 +195,13 @@ export const RecurrencePatternEditor = ({
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Passo 2</p>
                 <p className="text-sm font-semibold text-slate-900">Escolha os dias da semana</p>
-                <p className="text-xs text-slate-500">Voce pode marcar um ou varios dias para a mesma reuniao.</p>
+                <p className="text-xs text-slate-500">Você pode marcar um ou vários dias para a mesma reunião.</p>
               </div>
 
               <span className="inline-flex w-fit rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[11px] font-medium text-sky-700">
                 {weeklySelectionCount > 0
-                  ? `${weeklySelectionCount} dia${weeklySelectionCount > 1 ? "s" : ""} selecionado${weeklySelectionCount > 1 ? "s" : ""}`
-                  : "Selecione pelo menos 1 dia"}
+                    ? `${weeklySelectionCount} dia${weeklySelectionCount > 1 ? "s" : ""} selecionado${weeklySelectionCount > 1 ? "s" : ""}`
+                    : "Selecione pelo menos 1 dia"}
               </span>
             </div>
 
@@ -236,10 +236,10 @@ export const RecurrencePatternEditor = ({
                   <RefreshCw className="h-4 w-4" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-semibold text-slate-900">Monte as regras do mes</p>
+                  <p className="text-sm font-semibold text-slate-900">Monte as regras do mês</p>
                   <p className="text-xs leading-5 text-slate-600">
-                    Cada regra adicionada cria mais uma ocorrencia da mesma reuniao dentro do mes.
-                    Isso permite combinar padroes como 1a segunda e 3a quinta na mesma serie.
+                    Cada regra adicionada cria mais uma ocorrência da mesma reunião dentro do mês.
+                    Isso permite combinar padrões como 1a segunda e 3a quinta na mesma série.
                   </p>
                 </div>
               </div>
@@ -282,7 +282,7 @@ export const RecurrencePatternEditor = ({
             <div className="space-y-4 rounded-[1.15rem] border border-slate-200 bg-white p-4">
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Passo 2</p>
-                <p className="text-sm font-semibold text-slate-900">Configure a proxima regra mensal</p>
+                <p className="text-sm font-semibold text-slate-900">Configure a próxima regra mensal</p>
                 <p className="text-xs text-slate-500">{monthlyModeContent.description}</p>
               </div>
 
@@ -290,7 +290,7 @@ export const RecurrencePatternEditor = ({
                 <div className="space-y-3">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
                     <p className="text-xs text-slate-600">
-                      Escolha um dia do calendario. Se ele nao existir em um mes menor, a reuniao nao acontece naquele mes.
+                      Escolha um dia do calendário. Se ele não existir em um mês menor, a reunião não acontece naquele mês.
                     </p>
                   </div>
 
@@ -320,7 +320,7 @@ export const RecurrencePatternEditor = ({
               {monthlyRecurrenceMode === "weekday" && (
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Semana do mes</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Semana do mês</p>
                     <div className="grid grid-cols-3 gap-2">
                       {MONTHLY_RECURRENCE_WEEKS.map((week) => {
                         const active = recurrenceMonthlyWeek === week;
@@ -375,12 +375,12 @@ export const RecurrencePatternEditor = ({
                     Regra atual
                   </p>
                   <p className="mt-1 text-sm font-semibold text-violet-900">
-                    Todo mes em {formatMonthlyRecurrenceRule(currentMonthlyRule)}
+                    Todo mês em {formatMonthlyRecurrenceRule(currentMonthlyRule)}
                   </p>
                   <p className="mt-1 text-xs text-violet-700/80">
                     {monthlyRuleAlreadyAdded
-                      ? "Essa regra ja foi adicionada."
-                      : "Use o botao ao lado para incluir essa regra na serie."}
+                      ? "Essa regra já foi adicionada."
+                      : "Use o botão ao lado para incluir essa regra na série."}
                   </p>
                 </div>
 
@@ -396,7 +396,7 @@ export const RecurrencePatternEditor = ({
                   )}
                 >
                   <Plus className="h-4 w-4" />
-                  {monthlyRuleAlreadyAdded ? "Ja adicionada" : "Adicionar regra"}
+                  {monthlyRuleAlreadyAdded ? "Já adicionada" : "Adicionar regra"}
                 </button>
               </div>
             </div>
@@ -426,10 +426,10 @@ export const RecurrencePatternEditor = ({
                     >
                       <div>
                         <p className="text-sm font-semibold text-slate-900">
-                          Todo mes em {formatMonthlyRecurrenceRule(rule)}
+                          Todo mês em {formatMonthlyRecurrenceRule(rule)}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">
-                          Essa ocorrencia faz parte da mesma serie da reuniao.
+                          Essa ocorrência faz parte da mesma série da reunião.
                         </p>
                       </div>
 
@@ -455,12 +455,12 @@ export const RecurrencePatternEditor = ({
                 <div className="space-y-2">
                   <p className="text-sm font-semibold text-slate-900">Como a regra se comporta</p>
                   <p className="text-xs leading-5 text-slate-600">
-                    Se voce escolher o dia 31, a reuniao so acontece nos meses que tiverem dia 31.
-                    Nos meses com 30 dias ou fevereiro, ela nao aparece.
+                    Se você escolher o dia 31, a reunião só acontece nos meses que tiverem dia 31.
+                    Nos meses com 30 dias ou fevereiro, ela não aparece.
                   </p>
                   <p className="text-xs leading-5 text-slate-600">
-                    Se voce escolher a 5a ocorrencia de um dia e aquele mes nao tiver essa 5a ocorrencia,
-                    a reuniao nao acontece naquele mes. Para sempre pegar a ultima, use a opcao Ultima.
+                    Se você escolher a 5a ocorrência de um dia e aquele mês não tiver essa 5a ocorrência,
+                    a reunião não acontece naquele mês. Para sempre pegar a última, use a opção Última.
                   </p>
                 </div>
               </div>
@@ -479,7 +479,7 @@ export const RecurrencePatternEditor = ({
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-500">Resumo final</p>
               <p className="mt-1 text-sm font-semibold text-violet-900">{recurrenceSummary}</p>
               <p className="mt-1 text-xs leading-5 text-violet-700/80">
-                Se essa frase descreve exatamente a regra desejada, a configuracao esta pronta.
+                Se essa frase descreve exatamente a regra desejada, a configuração está pronta.
               </p>
             </div>
           </div>

@@ -109,7 +109,7 @@ export const MeetingDetailsDialog = ({
       setDurationInput(parsed.formatted);
       return;
     }
-    alert("Informe a duracao em minutos ou no formato HH:MM.");
+    alert("Informe a duração em minutos ou no formato HH:MM.");
   };
 
   const toggleWeekDay = (day: string) => {
@@ -230,14 +230,14 @@ export const MeetingDetailsDialog = ({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!title.trim() || !date || !time) return alert("Titulo, data e horario sao obrigatorios.");
-    if (requiresOnlineLink && !onlineLink.trim()) return alert("Informe o link da reuniao para reunioes online.");
+    if (!title.trim() || !date || !time) return alert("Título, data e horário são obrigatórios.");
+    if (requiresOnlineLink && !onlineLink.trim()) return alert("Informe o link da reunião para reuniões online.");
     if (meeting.isRecurring && recurrenceType === "weekly" && recurrenceDaysOfWeek.length === 0) return alert("Selecione pelo menos um dia da semana.");
     if (meeting.isRecurring && recurrenceType === "monthly" && recurrenceMonthlyRules.length === 0) return alert("Adicione pelo menos uma regra mensal.");
 
     const participantsList = participants.split(",").map((participant) => participant.trim()).filter((participant) => participant.length > 0);
     const parsedDuration = durationInput ? parseDurationInput(durationInput) : null;
-    if (durationInput && !parsedDuration) return alert("Informe a duracao em minutos ou no formato HH:MM.");
+    if (durationInput && !parsedDuration) return alert("Informe a duração em minutos ou no formato HH:MM.");
 
     const payload: MeetingUpdatePayload = {
       id: meeting.id,
@@ -294,7 +294,7 @@ export const MeetingDetailsDialog = ({
               </DialogClose>
             </div>
 
-            <DialogTitle className="text-xl font-semibold text-foreground">Gerenciar reuniao</DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-foreground">Gerenciar reunião</DialogTitle>
             <DialogDescription className="mt-1 text-sm text-muted-foreground" translate="no">
               Criada em {createdAtLabel}
             </DialogDescription>
@@ -322,8 +322,8 @@ export const MeetingDetailsDialog = ({
                         <RefreshCw className="h-4 w-4" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold text-slate-900">Recorrencia configurada</h3>
-                        <p className="text-xs text-slate-500">Esta solicitacao usa repeticao automatica.</p>
+                        <h3 className="text-sm font-semibold text-slate-900">Recorrência configurada</h3>
+                        <p className="text-xs text-slate-500">Esta solicitação usa repetição automática.</p>
                       </div>
                     </div>
 
@@ -342,7 +342,7 @@ export const MeetingDetailsDialog = ({
                   <div className="space-y-2">
                     <Label htmlFor="meeting-title" className="flex items-center gap-2 text-sm font-medium">
                       <FileText className="h-4 w-4 text-primary" />
-                      Titulo
+                      Título
                     </Label>
                     <Input id="meeting-title" value={title} onChange={(event) => setTitle(event.target.value)} required className="rounded-xl" />
                   </div>
@@ -368,18 +368,18 @@ export const MeetingDetailsDialog = ({
                   <div className="space-y-2">
                     <Label htmlFor="meeting-date" className="flex items-center gap-2 text-sm font-medium">
                       <Calendar className="h-4 w-4 text-primary" />
-                      {meeting.isRecurring ? "Inicio da serie" : "Data"}
+                      {meeting.isRecurring ? "Início da série" : "Data"}
                     </Label>
                     <Input id="meeting-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} required className="rounded-xl" />
                     {meeting.isRecurring && (
-                      <p className="text-xs text-slate-500">Serie ativa a partir de {format(parseLocalDate(date || meeting.date), "dd/MM/yyyy")}</p>
+                      <p className="text-xs text-slate-500">Série ativa a partir de {format(parseLocalDate(date || meeting.date), "dd/MM/yyyy")}</p>
                     )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="meeting-time" className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4 text-primary" />
-                      Horario
+                      Horário
                     </Label>
                     <Input id="meeting-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} required className="rounded-xl" />
                   </div>
@@ -404,15 +404,15 @@ export const MeetingDetailsDialog = ({
                     onAddMonthlyRule={addMonthlyRule}
                     onRemoveMonthlyRule={removeMonthlyRule}
                     recurrenceSummary={recurrenceSummary}
-                    heading="Como essa serie deve funcionar?"
-                    description="Ajuste a frequencia e a regra com base no comportamento desejado. O resumo final descreve exatamente a recorrencia salva."
+                    heading="Como essa série deve funcionar?"
+                    description="Ajuste a frequência e a regra com base no comportamento desejado. O resumo final descreve exatamente a recorrência salva."
                   />
                 )}
 
                 <div className="space-y-2">
                   <Label htmlFor="meeting-participants" className="flex items-center gap-2 text-sm font-medium">
                     <Users className="h-4 w-4 text-primary" />
-                    Participantes (separe por virgulas)
+                    Participantes (separe por vírgulas)
                   </Label>
                   <Input
                     id="meeting-participants"
@@ -441,7 +441,7 @@ export const MeetingDetailsDialog = ({
                   <div className="space-y-2">
                     <Label htmlFor="meeting-duration" className="flex items-center gap-2 text-sm font-medium">
                       <Timer className="h-4 w-4 text-primary" />
-                      Duracao
+                      Duração
                     </Label>
                     <Input
                       id="meeting-duration"
@@ -467,7 +467,7 @@ export const MeetingDetailsDialog = ({
                         <SelectItem value="presencial">Presencial</SelectItem>
                         <SelectItem value="zoom">Zoom</SelectItem>
                         <SelectItem value="meet">Google Meet</SelectItem>
-                        <SelectItem value="external">Reuniao Externa</SelectItem>
+                        <SelectItem value="external">Reunião Externa</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -477,7 +477,7 @@ export const MeetingDetailsDialog = ({
                   <div className="space-y-2">
                     <Label htmlFor="meeting-link" className="flex items-center gap-2 text-sm font-medium">
                       <LinkIcon className="h-4 w-4 text-primary" />
-                      Link da reuniao ({getMeetingTypeLabel(meetingType)})
+                      Link da reunião ({getMeetingTypeLabel(meetingType)})
                     </Label>
                     <Input
                       id="meeting-link"
@@ -503,7 +503,7 @@ export const MeetingDetailsDialog = ({
                 className="rounded-xl border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50"
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                {meeting.isRecurring ? "Excluir serie" : "Excluir"}
+                {meeting.isRecurring ? "Excluir série" : "Excluir"}
               </Button>
               <Button
                 type="submit"
@@ -511,7 +511,7 @@ export const MeetingDetailsDialog = ({
                 disabled={saving || deleting}
                 className="rounded-xl bg-foreground text-background hover:bg-foreground/90"
               >
-                {saving ? "Salvando..." : "Salvar alteracoes"}
+                {saving ? "Salvando..." : "Salvar alterações"}
               </Button>
             </DialogFooter>
           </form>

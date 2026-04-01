@@ -18,7 +18,7 @@ export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   presencial: "Presencial",
   zoom: "Zoom",
   meet: "Google Meet",
-  external: "Reuniao Externa",
+  external: "Reunião Externa",
 };
 
 export const getMeetingTypeLabel = (meetingType: MeetingType = "presencial") =>

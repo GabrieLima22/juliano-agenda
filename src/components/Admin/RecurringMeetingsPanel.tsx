@@ -33,18 +33,18 @@ export const RecurringMeetingsPanel = ({
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-lg font-semibold text-foreground">Reunioes Recorrentes</h2>
+        <h2 className="text-lg font-semibold text-foreground">Reuniões Recorrentes</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          {meetings.length} {meetings.length === 1 ? "serie recorrente ativa" : "series recorrentes ativas"}
+          {meetings.length} {meetings.length === 1 ? "série recorrente ativa" : "séries recorrentes ativas"}
         </p>
       </div>
 
       {meetings.length === 0 ? (
         <div className="rounded-xl border border-white/70 bg-white/45 p-12 text-center backdrop-blur-sm">
           <RefreshCw className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-          <p className="text-sm text-muted-foreground">Nenhuma recorrencia ativa</p>
+          <p className="text-sm text-muted-foreground">Nenhuma recorrência ativa</p>
           <p className="mt-1 text-xs text-muted-foreground/70">
-            Quando houver series recorrentes, elas aparecerao aqui.
+            Quando houver séries recorrentes, elas aparecerão aqui.
           </p>
         </div>
       ) : (
@@ -88,7 +88,7 @@ export const RecurringMeetingsPanel = ({
                     <div className="flex flex-wrap gap-2.5 text-[13px] text-slate-600">
                       <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5">
                         <Calendar className="h-3.5 w-3.5 text-violet-600" />
-                        Inicio em {format(parseLocalDate(meeting.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                        Início em {format(parseLocalDate(meeting.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                       </span>
                       <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5">
                         <Clock className="h-3.5 w-3.5 text-violet-600" />
@@ -144,7 +144,7 @@ export const RecurringMeetingsPanel = ({
                       className="rounded-xl border-red-200 text-xs text-red-600 hover:border-red-300 hover:bg-red-50"
                     >
                       <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                      Remover serie
+                      Remover série
                     </Button>
                   </div>
                 </div>

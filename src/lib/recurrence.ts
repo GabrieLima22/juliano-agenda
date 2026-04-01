@@ -12,11 +12,11 @@ const WEEKDAY_PRIORITY = new Map(WEEKDAY_ORDER.map((day, index) => [day, index])
 const WEEKDAY_DISPLAY_LABELS: Record<WeekdayKey, string> = {
   Dom: "Domingo",
   Seg: "Segunda-feira",
-  Ter: "Terca-feira",
+  Ter: "Terça-feira",
   Qua: "Quarta-feira",
   Qui: "Quinta-feira",
   Sex: "Sexta-feira",
-  Sab: "Sabado",
+  Sab: "Sábado",
 };
 
 const MONTHLY_WEEK_LABELS: Record<MonthlyRecurrenceWeek, string> = {
@@ -25,7 +25,7 @@ const MONTHLY_WEEK_LABELS: Record<MonthlyRecurrenceWeek, string> = {
   3: "3a",
   4: "4a",
   5: "5a",
-  [-1]: "ultima",
+  [-1]: "última",
 };
 
 const canonicalizeWeekday = (day: string) => {
@@ -432,7 +432,7 @@ export const getRecurrenceFrequencyLabel = (
   });
 
   if (effectiveType === "daily") {
-    return "Diaria";
+    return "Diária";
   }
 
   if (effectiveType === "weekly") {
@@ -474,19 +474,19 @@ export const getRecurrenceSummary = (
       return `Toda semana em ${joinWithAnd(days.map(formatWeekdayDisplay))}`;
     }
 
-    return "Repeticao semanal";
+    return "Repetição semanal";
   }
 
   if (recurrenceType === "monthly") {
     const monthlyRules = getMonthlyRecurrenceRules(meeting);
     if (monthlyRules.length > 0) {
-      return `Todo mes ${joinWithAnd(monthlyRules.map(formatMonthlyRecurrenceRuleFragment))}`;
+      return `Todo mês ${joinWithAnd(monthlyRules.map(formatMonthlyRecurrenceRuleFragment))}`;
     }
 
-    return `Todo mes no dia ${resolveMonthlyDay(meeting)}`;
+    return `Todo mês no dia ${resolveMonthlyDay(meeting)}`;
   }
 
-  return "Reuniao recorrente";
+  return "Reunião recorrente";
 };
 
 export const getRecurrenceDetails = (
@@ -508,16 +508,16 @@ export const getRecurrenceDetails = (
 
   return [
     {
-      label: "Inicio",
+      label: "Início",
       value: format(parseLocalDate(meeting.date), "dd/MM/yyyy"),
     },
     {
-      label: "Frequencia",
+      label: "Frequência",
       value: getRecurrenceFrequencyLabel(meeting.recurrenceType, meeting.recurrenceDayOfMonth),
     },
     {
-      label: "Repeticao",
-      value: getRecurrenceSummary(meeting) ?? "Reuniao recorrente",
+      label: "Repetição",
+      value: getRecurrenceSummary(meeting) ?? "Reunião recorrente",
     },
   ];
 };

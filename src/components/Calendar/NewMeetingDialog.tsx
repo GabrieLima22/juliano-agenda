@@ -141,7 +141,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
     if (parsed) {
       setDurationInput(parsed.formatted);
     } else {
-      toast.error("Informe a duracao em minutos ou no formato HH:MM.");
+      toast.error("Informe a duração em minutos ou no formato HH:MM.");
     }
   };
 
@@ -220,11 +220,11 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
     e.preventDefault();
 
     if (!title || !date || !time) {
-      toast.error("Preencha todos os campos obrigatorios");
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
     if (requiresOnlineLink && !onlineLink.trim()) {
-      toast.error("Informe o link da reuniao");
+      toast.error("Informe o link da reunião");
       return;
     }
     if (isRecurring && recurrenceType === "weekly" && recurrenceDaysOfWeek.length === 0) {
@@ -238,7 +238,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
 
     const parsedDuration = durationInput ? parseDurationInput(durationInput) : null;
     if (durationInput && !parsedDuration) {
-      toast.error("Informe a duracao em minutos ou no formato HH:MM.");
+      toast.error("Informe a duração em minutos ou no formato HH:MM.");
       return;
     }
 
@@ -283,9 +283,9 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
       await onSave(meeting);
       resetForm();
       setOpen(false);
-      toast.success("Solicitacao enviada! Aguarde aprovacao.");
+      toast.success("Solicitação enviada! Aguarde aprovação.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao salvar a reuniao.";
+      const message = error instanceof Error ? error.message : "Erro ao salvar a reunião.";
       toast.error(message);
     } finally {
       setIsSubmitting(false);
@@ -301,7 +301,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
             className="rounded-2xl bg-foreground px-6 font-medium text-background hover:bg-foreground/90 animate-smooth"
           >
             <Plus className="mr-2 h-5 w-5" />
-            Nova Reuniao
+            Nova Reunião
           </Button>
         )}
       </DialogTrigger>
@@ -314,7 +314,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               <span className="sr-only">Fechar</span>
             </DialogClose>
           </div>
-          <DialogTitle className="text-xl font-semibold text-foreground">Agendar Reuniao</DialogTitle>
+          <DialogTitle className="text-xl font-semibold text-foreground">Agendar Reunião</DialogTitle>
           <DialogDescription className="mt-0.5 text-sm text-muted-foreground">
             Configure os detalhes do seu encontro.
           </DialogDescription>
@@ -340,7 +340,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
                     : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                <Calendar className="h-4 w-4" /> Reuniao Unica
+                <Calendar className="h-4 w-4" /> Reunião Única
               </button>
               <button
                 type="button"
@@ -359,13 +359,13 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
             <div className="space-y-2">
               <Label htmlFor="title" className="flex items-center gap-2 text-sm font-medium">
                 <FileText className="h-4 w-4 text-primary" />
-                Titulo da Reuniao *
+                Título da Reunião *
               </Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ex: Reuniao de planejamento"
+                placeholder="Ex: Reunião de planejamento"
                 className="rounded-xl"
                 required
               />
@@ -375,7 +375,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               <div className="space-y-2">
                 <Label htmlFor="date" className="flex items-center gap-2 text-sm font-medium">
                   <Calendar className="h-4 w-4 text-primary" />
-                  {isRecurring ? "Data de Inicio *" : "Data *"}
+                  {isRecurring ? "Data de Início *" : "Data *"}
                 </Label>
                 <Input
                   id="date"
@@ -390,7 +390,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               <div className="space-y-2">
                 <Label htmlFor="time" className="flex items-center gap-2 text-sm font-medium">
                   <Clock className="h-4 w-4 text-primary" />
-                  Horario *
+                  Horário *
                 </Label>
                 <Input
                   id="time"
@@ -422,8 +422,8 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
                 onAddMonthlyRule={addMonthlyRule}
                 onRemoveMonthlyRule={removeMonthlyRule}
                 recurrenceSummary={recurrencePreview}
-                heading="Como essa reuniao deve se repetir?"
-                description="Escolha a frequencia e depois a regra. O resumo final mostra exatamente o que sera salvo."
+                heading="Como essa reunião deve se repetir?"
+                description="Escolha a frequência e depois a regra. O resumo final mostra exatamente o que será salvo."
               />
             )}
 
@@ -450,7 +450,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Topicos a serem discutidos na reuniao..."
+                placeholder="Tópicos a serem discutidos na reunião..."
                 className="min-h-[80px] rounded-xl resize-none"
               />
             </div>
@@ -459,7 +459,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               <div className="space-y-2">
                 <Label htmlFor="duration" className="flex items-center gap-2 text-sm font-medium">
                   <Timer className="h-4 w-4 text-primary" />
-                  Duracao
+                  Duração
                 </Label>
                 <Input
                   id="duration"
@@ -475,7 +475,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               <div className="space-y-2">
                 <Label className="flex items-center gap-2 text-sm font-medium">
                   <Video className="h-4 w-4 text-primary" />
-                  Tipo de reuniao
+                  Tipo de reunião
                 </Label>
                 <Select value={meetingType} onValueChange={(value) => setMeetingType(value as MeetingType)}>
                   <SelectTrigger className="rounded-xl">
@@ -485,7 +485,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
                     <SelectItem value="presencial">Presencial</SelectItem>
                     <SelectItem value="zoom">Zoom</SelectItem>
                     <SelectItem value="meet">Google Meet</SelectItem>
-                    <SelectItem value="external">Reuniao Externa</SelectItem>
+                    <SelectItem value="external">Reunião Externa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -495,7 +495,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               <div className="space-y-2">
                 <Label htmlFor="onlineLink" className="flex items-center gap-2 text-sm font-medium">
                   <LinkIcon className="h-4 w-4 text-primary" />
-                  Link da reuniao ({getMeetingTypeLabel(meetingType)})
+                  Link da reunião ({getMeetingTypeLabel(meetingType)})
                 </Label>
                 <Input
                   id="onlineLink"
@@ -521,11 +521,11 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
               className="rounded-xl bg-foreground text-background font-medium hover:bg-foreground/90 animate-smooth"
             >
               <Check className="mr-2 h-4 w-4" />
-              {isSubmitting
-                ? "Salvando..."
-                : isRecurring
-                  ? "Agendar Recorrencia"
-                  : "Confirmar Reuniao"}
+                  {isSubmitting
+                    ? "Salvando..."
+                    : isRecurring
+                      ? "Agendar Recorrência"
+                      : "Confirmar Reunião"}
             </Button>
           </DialogFooter>
         </form>

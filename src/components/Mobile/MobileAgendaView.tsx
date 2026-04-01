@@ -231,7 +231,7 @@ export const MobileAgendaView = ({
   const locationCopy =
     compactLocationLabel ||
     (liveContext.permission === "denied"
-      ? "Ative a localizacao"
+      ? "Ative a localização"
       : liveContext.error || "Localizando aparelho...");
 
   return (
@@ -309,10 +309,10 @@ export const MobileAgendaView = ({
                 <Bell className="h-5 w-5 text-indigo-600" />
               </div>
               <h2 className="mt-5 text-center text-[1.3rem] font-semibold tracking-[-0.03em] text-slate-900">
-                Notificacoes
+                Notificações
               </h2>
               <p className="mt-2 text-center text-sm leading-6 text-slate-500">
-                Esta area fica pronta no mobile e recebe os avisos na proxima etapa.
+                Esta área fica pronta no mobile e recebe os avisos na próxima etapa.
               </p>
             </div>
           </section>
@@ -346,7 +346,7 @@ export const MobileAgendaView = ({
                       type="button"
                       onClick={onPreviousMonth}
                       className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition active:scale-95"
-                      aria-label="Mes anterior"
+                      aria-label="Mês anterior"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -354,7 +354,7 @@ export const MobileAgendaView = ({
                       type="button"
                       onClick={onNextMonth}
                       className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition active:scale-95"
-                      aria-label="Proximo mes"
+                      aria-label="Próximo mês"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -372,7 +372,7 @@ export const MobileAgendaView = ({
                     onClick={() => startTransition(() => setShowMonthOverview(true))}
                     className="text-sm font-medium text-indigo-500 transition hover:text-indigo-600"
                   >
-                    Ver mes
+                    Ver mês
                   </button>
                 )}
               </div>
@@ -480,7 +480,7 @@ export const MobileAgendaView = ({
                   </div>
                   <h4 className="mt-5 text-[1.08rem] font-semibold text-slate-900">Dia livre</h4>
                   <p className="mt-2 text-sm leading-6 text-slate-500">
-                    Nao existem reunioes cadastradas para esta data.
+                    Não existem reuniões cadastradas para esta data.
                   </p>
                 </div>
               ) : (
@@ -525,7 +525,7 @@ export const MobileAgendaView = ({
               }`}
             >
               <Bell className="h-[1.375rem] w-[1.375rem]" />
-              <span>Notificacoes</span>
+              <span>Notificações</span>
             </button>
           </div>
 

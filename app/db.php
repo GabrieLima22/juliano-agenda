@@ -50,6 +50,96 @@ function has_table_column(PDO $pdo, string $table, string $column): bool {
     return array_key_exists($column, $columns);
 }
 
+function db_normalize_weekday_abbr(?string $abbr): ?string {
+    $abbr = trim((string)$abbr);
+    if ($abbr === '') {
+        return null;
+    }
+
+    $map = [
+        'Dom' => 'Dom',
+        'Seg' => 'Seg',
+        'Ter' => 'Ter',
+        'Qua' => 'Qua',
+        'Qui' => 'Qui',
+        'Sex' => 'Sex',
+        'Sab' => 'Sab',
+        'SÃƒÂ¡b' => 'Sab',
+        'Sabado' => 'Sab',
+        'SÃƒÂ¡bado' => 'Sab',
+    ];
+
+    return $map[$abbr] ?? null;
+}
+
+function backfill_recurrence_compatibility(PDO $pdo): void {
+    $columns = get_table_columns($pdo, 'meetings');
+    if (!array_key_exists('recurrence_monthly_rules', $columns)) {
+        return;
+    }
+
+    $allWeekdaysJson = json_encode(['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'], JSON_UNESCAPED_UNICODE);
+    $pdo->exec("UPDATE meetings SET recurrence_type = 'weekly', recurrence_days_of_week = " . $pdo->quote($allWeekdaysJson) . " WHERE is_recurring = 1 AND recurrence_type = 'daily' AND (recurrence_day_of_month IS NULL OR recurrence_day_of_month = 0)");
+    $pdo->exec("UPDATE meetings SET recurrence_type = 'monthly' WHERE is_recurring = 1 AND recurrence_type = 'daily' AND recurrence_day_of_month IS NOT NULL");
+
+    $stmt = $pdo->query("SELECT id, date, is_recurring, recurrence_type, recurrence_day_of_month, recurrence_monthly_week, recurrence_monthly_weekday, recurrence_monthly_rules FROM meetings WHERE is_recurring = 1");
+    $rows = $stmt ? $stmt->fetchAll() : [];
+    if (empty($rows)) {
+        return;
+    }
+
+    $update = $pdo->prepare("UPDATE meetings SET recurrence_monthly_rules = :rules WHERE id = :id");
+
+    foreach ($rows as $row) {
+        $existingRules = json_decode((string)($row['recurrence_monthly_rules'] ?? ''), true);
+        if (is_array($existingRules) && !empty($existingRules)) {
+            continue;
+        }
+
+        $type = trim((string)($row['recurrence_type'] ?? ''));
+        if ($type !== 'monthly') {
+            continue;
+        }
+
+        $rules = [];
+        $dayOfMonth = isset($row['recurrence_day_of_month']) ? (int)$row['recurrence_day_of_month'] : null;
+        $monthlyWeek = isset($row['recurrence_monthly_week']) ? (int)$row['recurrence_monthly_week'] : null;
+        $monthlyWeekday = db_normalize_weekday_abbr($row['recurrence_monthly_weekday'] ?? null);
+
+        if (
+            $monthlyWeek !== null &&
+            $monthlyWeekday !== null &&
+            ($monthlyWeek === -1 || ($monthlyWeek >= 1 && $monthlyWeek <= 5))
+        ) {
+            $rules[] = [
+                'kind' => 'weekday',
+                'week' => $monthlyWeek,
+                'weekday' => $monthlyWeekday,
+            ];
+        } else {
+            if (($dayOfMonth === null || $dayOfMonth < 1 || $dayOfMonth > 31) && !empty($row['date'])) {
+                $dayOfMonth = (int)date('j', strtotime((string)$row['date']));
+            }
+
+            if ($dayOfMonth !== null && $dayOfMonth >= 1 && $dayOfMonth <= 31) {
+                $rules[] = [
+                    'kind' => 'dayOfMonth',
+                    'dayOfMonth' => $dayOfMonth,
+                ];
+            }
+        }
+
+        if (empty($rules)) {
+            continue;
+        }
+
+        $update->execute([
+            ':id' => $row['id'],
+            ':rules' => json_encode($rules, JSON_UNESCAPED_UNICODE),
+        ]);
+    }
+}
+
 function ensure_meetings_table_mysql(PDO $pdo): void {
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS meetings (
@@ -69,6 +159,7 @@ function ensure_meetings_table_mysql(PDO $pdo): void {
             recurrence_days_of_week VARCHAR(100) DEFAULT NULL,
             recurrence_monthly_week INT DEFAULT NULL,
             recurrence_monthly_weekday VARCHAR(10) DEFAULT NULL,
+            recurrence_monthly_rules TEXT DEFAULT NULL,
             created_at DATETIME NOT NULL,
             status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
             PRIMARY KEY (id),
@@ -97,6 +188,7 @@ function ensure_meetings_table_sqlite(PDO $pdo): void {
             recurrence_days_of_week TEXT DEFAULT NULL,
             recurrence_monthly_week INTEGER DEFAULT NULL,
             recurrence_monthly_weekday TEXT DEFAULT NULL,
+            recurrence_monthly_rules TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending'
         )"
@@ -122,6 +214,7 @@ function ensure_missing_meetings_columns(PDO $pdo): void {
             'recurrence_days_of_week' => "ALTER TABLE meetings ADD COLUMN recurrence_days_of_week TEXT DEFAULT NULL",
             'recurrence_monthly_week' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_week INTEGER DEFAULT NULL",
             'recurrence_monthly_weekday' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_weekday TEXT DEFAULT NULL",
+            'recurrence_monthly_rules' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_rules TEXT DEFAULT NULL",
             'created_at' => "ALTER TABLE meetings ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
             'status' => "ALTER TABLE meetings ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
         ]
@@ -137,6 +230,7 @@ function ensure_missing_meetings_columns(PDO $pdo): void {
             'recurrence_days_of_week' => "ALTER TABLE meetings ADD COLUMN recurrence_days_of_week VARCHAR(100) DEFAULT NULL",
             'recurrence_monthly_week' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_week INT DEFAULT NULL",
             'recurrence_monthly_weekday' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_weekday VARCHAR(10) DEFAULT NULL",
+            'recurrence_monthly_rules' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_rules TEXT DEFAULT NULL",
             'created_at' => "ALTER TABLE meetings ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
             'status' => "ALTER TABLE meetings ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'",
         ];
@@ -161,7 +255,6 @@ function ensure_meetings_schema(PDO $pdo): void {
 
     try {
         $pdo->exec("UPDATE meetings SET meeting_type = 'external' WHERE meeting_type = 'externa'");
-        $pdo->exec("UPDATE meetings SET recurrence_type = 'monthly' WHERE is_recurring = 1 AND recurrence_type = 'daily' AND recurrence_day_of_month IS NOT NULL");
 
         if ($driver !== 'sqlite') {
             $columns = get_table_columns($pdo, 'meetings');
@@ -180,6 +273,8 @@ function ensure_meetings_schema(PDO $pdo): void {
                 }
             }
         }
+
+        backfill_recurrence_compatibility($pdo);
     } catch (Throwable $e) {
         // Continua mesmo se essa migration falhar
     }

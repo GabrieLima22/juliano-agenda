@@ -3,6 +3,16 @@ export type MeetingType = "presencial" | "zoom" | "meet" | "external";
 export type RecurrenceType = "daily" | "weekly" | "monthly";
 export type MonthlyRecurrenceMode = "dayOfMonth" | "weekday";
 export type MonthlyRecurrenceWeek = 1 | 2 | 3 | 4 | 5 | -1;
+export type MonthlyRecurrenceRule =
+  | {
+      kind: "dayOfMonth";
+      dayOfMonth: number;
+    }
+  | {
+      kind: "weekday";
+      week: MonthlyRecurrenceWeek;
+      weekday: string;
+    };
 
 export const MEETING_TYPE_LABELS: Record<MeetingType, string> = {
   presencial: "Presencial",
@@ -33,6 +43,7 @@ export interface Meeting {
   recurrenceDaysOfWeek?: string[] | null; // ['Seg','Ter',...] para tipo 'weekly'
   recurrenceMonthlyWeek?: MonthlyRecurrenceWeek | null; // 1-5 ou -1 (ultima)
   recurrenceMonthlyWeekday?: string | null; // 'Seg', 'Ter', ... para recorrencia mensal por semana/dia
+  recurrenceMonthlyRules?: MonthlyRecurrenceRule[] | null; // varias regras mensais na mesma reuniao
   createdAt: string;
   status: "pending" | "approved" | "rejected";
 }

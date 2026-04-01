@@ -43,6 +43,7 @@ CREATE TABLE `meetings` (
   `recurrence_days_of_week` varchar(100) DEFAULT NULL,
   `recurrence_monthly_week` int(11) DEFAULT NULL,
   `recurrence_monthly_weekday` varchar(10) DEFAULT NULL,
+  `recurrence_monthly_rules` text DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

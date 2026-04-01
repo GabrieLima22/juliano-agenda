@@ -61,6 +61,7 @@ export const saveMeeting = async (meeting: Meeting): Promise<Meeting> => {
     payload.recurrenceDaysOfWeek = meeting.recurrenceDaysOfWeek ?? null;
     payload.recurrenceMonthlyWeek = meeting.recurrenceMonthlyWeek ?? null;
     payload.recurrenceMonthlyWeekday = meeting.recurrenceMonthlyWeekday ?? null;
+    payload.recurrenceMonthlyRules = meeting.recurrenceMonthlyRules ?? null;
   }
   const created = await request<Meeting>("meetings.php", { method: "POST", json: payload });
   return created;
@@ -103,6 +104,7 @@ export interface MeetingUpdatePayload {
   recurrenceDaysOfWeek?: Meeting["recurrenceDaysOfWeek"];
   recurrenceMonthlyWeek?: Meeting["recurrenceMonthlyWeek"];
   recurrenceMonthlyWeekday?: Meeting["recurrenceMonthlyWeekday"];
+  recurrenceMonthlyRules?: Meeting["recurrenceMonthlyRules"];
   status?: Meeting["status"];
 }
 
@@ -129,6 +131,7 @@ export const updateMeeting = async (payload: MeetingUpdatePayload): Promise<Meet
   append("recurrenceDaysOfWeek");
   append("recurrenceMonthlyWeek");
   append("recurrenceMonthlyWeekday");
+  append("recurrenceMonthlyRules");
   append("status");
 
   return request<Meeting>("meetings.php", { method: "PATCH", json: body });

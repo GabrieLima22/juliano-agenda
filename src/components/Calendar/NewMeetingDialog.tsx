@@ -31,6 +31,7 @@ import {
   Meeting,
   MeetingType,
   MonthlyRecurrenceMode,
+  MonthlyRecurrenceRule,
   MonthlyRecurrenceWeek,
   RecurrenceType,
   getMeetingTypeLabel,
@@ -41,6 +42,7 @@ import { toast } from "sonner";
 import { parseDurationInput } from "@/lib/duration";
 import { generateClientId } from "@/lib/id";
 import {
+  areMonthlyRecurrenceRulesEqual,
   getMonthlyWeekdayPatternFromDate,
   getRecurrenceSummary,
   getWeekdayFromDate,
@@ -87,6 +89,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
   const [monthlyRecurrenceMode, setMonthlyRecurrenceMode] = useState<MonthlyRecurrenceMode>("dayOfMonth");
   const [recurrenceMonthlyWeek, setRecurrenceMonthlyWeek] = useState<MonthlyRecurrenceWeek>(1);
   const [recurrenceMonthlyWeekday, setRecurrenceMonthlyWeekday] = useState<string>("Seg");
+  const [recurrenceMonthlyRules, setRecurrenceMonthlyRules] = useState<MonthlyRecurrenceRule[]>([]);
   const requiresOnlineLink = meetingTypeRequiresOnlineLink(meetingType);
 
   useEffect(() => {
@@ -118,6 +121,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
     setIsRecurring(false);
     setRecurrenceType("weekly");
     setMonthlyRecurrenceMode("dayOfMonth");
+    setRecurrenceMonthlyRules([]);
     applyDateBasedDefaults(defaultDate);
   };
 
@@ -162,37 +166,53 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
     }
   };
 
+  const addMonthlyRule = (rule: MonthlyRecurrenceRule) => {
+    setRecurrenceMonthlyRules((current) =>
+      current.some((existingRule) => areMonthlyRecurrenceRulesEqual(existingRule, rule))
+        ? current
+        : [...current, rule],
+    );
+  };
+
+  const removeMonthlyRule = (index: number) => {
+    setRecurrenceMonthlyRules((current) => current.filter((_, currentIndex) => currentIndex !== index));
+  };
+
   const recurrencePreview = useMemo(() => {
     if (!isRecurring) {
       return null;
     }
+
+    if (recurrenceType === "monthly" && recurrenceMonthlyRules.length === 0) {
+      return null;
+    }
+
+    const primaryMonthlyRule = recurrenceMonthlyRules[0] ?? null;
 
     return getRecurrenceSummary({
       date,
       isRecurring: true,
       recurrenceType,
       recurrenceDayOfMonth:
-        recurrenceType === "monthly" && monthlyRecurrenceMode === "dayOfMonth"
-          ? recurrenceDayOfMonth
+        recurrenceType === "monthly" && primaryMonthlyRule?.kind === "dayOfMonth"
+          ? primaryMonthlyRule.dayOfMonth
           : null,
       recurrenceDaysOfWeek: recurrenceType === "weekly" ? recurrenceDaysOfWeek : null,
       recurrenceMonthlyWeek:
-        recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday"
-          ? recurrenceMonthlyWeek
+        recurrenceType === "monthly" && primaryMonthlyRule?.kind === "weekday"
+          ? primaryMonthlyRule.week
           : null,
       recurrenceMonthlyWeekday:
-        recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday"
-          ? recurrenceMonthlyWeekday
+        recurrenceType === "monthly" && primaryMonthlyRule?.kind === "weekday"
+          ? primaryMonthlyRule.weekday
           : null,
+      recurrenceMonthlyRules: recurrenceType === "monthly" ? recurrenceMonthlyRules : null,
     });
   }, [
     date,
     isRecurring,
-    monthlyRecurrenceMode,
-    recurrenceDayOfMonth,
     recurrenceDaysOfWeek,
-    recurrenceMonthlyWeek,
-    recurrenceMonthlyWeekday,
+    recurrenceMonthlyRules,
     recurrenceType,
   ]);
 
@@ -211,11 +231,9 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
       toast.error("Selecione pelo menos um dia da semana");
       return;
     }
-    if (isRecurring && recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday") {
-      if (!recurrenceMonthlyWeekday) {
-        toast.error("Selecione o dia da semana da recorrencia mensal");
-        return;
-      }
+    if (isRecurring && recurrenceType === "monthly" && recurrenceMonthlyRules.length === 0) {
+      toast.error("Adicione pelo menos uma regra mensal");
+      return;
     }
 
     const parsedDuration = durationInput ? parseDurationInput(durationInput) : null;
@@ -228,6 +246,7 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
       .split(",")
       .map((participant) => participant.trim())
       .filter((participant) => participant.length > 0);
+    const primaryMonthlyRule = recurrenceMonthlyRules[0] ?? null;
 
     const meeting: Meeting = {
       id: generateClientId(),
@@ -242,18 +261,19 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
       isRecurring,
       recurrenceType: isRecurring ? recurrenceType : null,
       recurrenceDayOfMonth:
-        isRecurring && recurrenceType === "monthly" && monthlyRecurrenceMode === "dayOfMonth"
-          ? recurrenceDayOfMonth
+        isRecurring && recurrenceType === "monthly" && primaryMonthlyRule?.kind === "dayOfMonth"
+          ? primaryMonthlyRule.dayOfMonth
           : null,
       recurrenceDaysOfWeek: isRecurring && recurrenceType === "weekly" ? recurrenceDaysOfWeek : null,
       recurrenceMonthlyWeek:
-        isRecurring && recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday"
-          ? recurrenceMonthlyWeek
+        isRecurring && recurrenceType === "monthly" && primaryMonthlyRule?.kind === "weekday"
+          ? primaryMonthlyRule.week
           : null,
       recurrenceMonthlyWeekday:
-        isRecurring && recurrenceType === "monthly" && monthlyRecurrenceMode === "weekday"
-          ? recurrenceMonthlyWeekday
+        isRecurring && recurrenceType === "monthly" && primaryMonthlyRule?.kind === "weekday"
+          ? primaryMonthlyRule.weekday
           : null,
+      recurrenceMonthlyRules: isRecurring && recurrenceType === "monthly" ? recurrenceMonthlyRules : null,
       createdAt: new Date().toISOString(),
       status: "pending",
     };
@@ -398,6 +418,9 @@ export const NewMeetingDialog = ({ selectedDate, onSave, trigger }: NewMeetingDi
                 onRecurrenceMonthlyWeekChange={setRecurrenceMonthlyWeek}
                 recurrenceMonthlyWeekday={recurrenceMonthlyWeekday}
                 onRecurrenceMonthlyWeekdayChange={setRecurrenceMonthlyWeekday}
+                monthlyRecurrenceRules={recurrenceMonthlyRules}
+                onAddMonthlyRule={addMonthlyRule}
+                onRemoveMonthlyRule={removeMonthlyRule}
                 recurrenceSummary={recurrencePreview}
                 heading="Como essa reuniao deve se repetir?"
                 description="Escolha a frequencia e depois a regra. O resumo final mostra exatamente o que sera salvo."

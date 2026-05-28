@@ -85,8 +85,13 @@ export const updateMeetingStatus = async (id: string, status: "approved" | "reje
   await request("meetings.php", { method: "PATCH", json: { id, status } });
 };
 
-export const deleteMeeting = async (id: string): Promise<void> => {
-  await request(`meetings.php?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+export const deleteMeeting = async (id: string, occurrenceDate?: string): Promise<void> => {
+  const query = new URLSearchParams({ id });
+  if (occurrenceDate) {
+    query.set("occurrenceDate", occurrenceDate);
+  }
+
+  await request(`meetings.php?${query.toString()}`, { method: "DELETE" });
 };
 
 export interface MeetingUpdatePayload {

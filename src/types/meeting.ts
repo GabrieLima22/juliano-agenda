@@ -31,6 +31,7 @@ export interface Meeting {
   id: string;
   title: string;
   date: string; // ISO date string
+  occurrenceDate?: string; // data da ocorrencia exibida no calendario
   time: string; // HH:mm format
   participants: string[];
   description?: string; // Pauta / descricao
@@ -44,6 +45,7 @@ export interface Meeting {
   recurrenceMonthlyWeek?: MonthlyRecurrenceWeek | null; // 1-5 ou -1 (ultima)
   recurrenceMonthlyWeekday?: string | null; // 'Seg', 'Ter', ... para recorrencia mensal por semana/dia
   recurrenceMonthlyRules?: MonthlyRecurrenceRule[] | null; // varias regras mensais na mesma reuniao
+  excludedOccurrenceDates?: string[] | null; // datas removidas da serie
   createdAt: string;
   status: "pending" | "approved" | "rejected";
 }

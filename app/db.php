@@ -160,6 +160,7 @@ function ensure_meetings_table_mysql(PDO $pdo): void {
             recurrence_monthly_week INT DEFAULT NULL,
             recurrence_monthly_weekday VARCHAR(10) DEFAULT NULL,
             recurrence_monthly_rules TEXT DEFAULT NULL,
+            excluded_occurrence_dates TEXT DEFAULT NULL,
             created_at DATETIME NOT NULL,
             status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending',
             PRIMARY KEY (id),
@@ -189,6 +190,7 @@ function ensure_meetings_table_sqlite(PDO $pdo): void {
             recurrence_monthly_week INTEGER DEFAULT NULL,
             recurrence_monthly_weekday TEXT DEFAULT NULL,
             recurrence_monthly_rules TEXT DEFAULT NULL,
+            excluded_occurrence_dates TEXT DEFAULT NULL,
             created_at TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'pending'
         )"
@@ -215,6 +217,7 @@ function ensure_missing_meetings_columns(PDO $pdo): void {
             'recurrence_monthly_week' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_week INTEGER DEFAULT NULL",
             'recurrence_monthly_weekday' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_weekday TEXT DEFAULT NULL",
             'recurrence_monthly_rules' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_rules TEXT DEFAULT NULL",
+            'excluded_occurrence_dates' => "ALTER TABLE meetings ADD COLUMN excluded_occurrence_dates TEXT DEFAULT NULL",
             'created_at' => "ALTER TABLE meetings ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
             'status' => "ALTER TABLE meetings ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'",
         ]
@@ -231,6 +234,7 @@ function ensure_missing_meetings_columns(PDO $pdo): void {
             'recurrence_monthly_week' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_week INT DEFAULT NULL",
             'recurrence_monthly_weekday' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_weekday VARCHAR(10) DEFAULT NULL",
             'recurrence_monthly_rules' => "ALTER TABLE meetings ADD COLUMN recurrence_monthly_rules TEXT DEFAULT NULL",
+            'excluded_occurrence_dates' => "ALTER TABLE meetings ADD COLUMN excluded_occurrence_dates TEXT DEFAULT NULL",
             'created_at' => "ALTER TABLE meetings ADD COLUMN created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP",
             'status' => "ALTER TABLE meetings ADD COLUMN status ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'",
         ];

@@ -129,19 +129,22 @@ const Index = () => {
       return [];
     }
 
+    const occurrenceDate = format(selectedDate, "yyyy-MM-dd");
+    const attachOccurrenceDate = (meeting: Meeting) =>
+      meeting.isRecurring ? { ...meeting, occurrenceDate } : meeting;
+
     if (isAdmin) {
       return getMeetingsOccurringOnDate(meetings, selectedDate, {
         includePending: true,
         includeRejected: false,
-      });
+      }).map(attachOccurrenceDate);
     }
 
-    const dateKey = format(selectedDate, "yyyy-MM-dd");
     const approvedMeetings = getMeetingsOccurringOnDate(meetings, selectedDate, {
       approvedOnly: true,
-    });
+    }).map(attachOccurrenceDate);
     const pendingDirectMeetings = meetings.filter(
-      (meeting) => meeting.status === "pending" && meeting.date === dateKey,
+      (meeting) => meeting.status === "pending" && meeting.date === occurrenceDate,
     );
 
     return [...approvedMeetings, ...pendingDirectMeetings].sort((a, b) => {
@@ -267,9 +270,9 @@ const Index = () => {
     }
   };
 
-  const handleDeleteMeeting = async (meeting: Meeting) => {
+  const handleDeleteMeeting = async (meeting: Meeting, scope: "occurrence" | "series" = "series") => {
     const confirmed = window.confirm(
-      meeting.isRecurring
+      meeting.isRecurring && scope === "series"
         ? `Deseja realmente excluir a série recorrente "${meeting.title}"?`
         : `Deseja realmente excluir a reunião "${meeting.title}"?`,
     );
@@ -279,7 +282,7 @@ const Index = () => {
 
     setIsDeletingMeeting(true);
     try {
-      await deleteMeeting(meeting.id);
+      await deleteMeeting(meeting.id, scope === "occurrence" ? meeting.occurrenceDate : undefined);
       await loadMeetings();
       if (isAdmin) {
         await loadPendingMeetings();

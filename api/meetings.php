@@ -117,6 +117,32 @@ function decode_monthly_rules_json(?string $json): array {
     return is_array($decoded) ? $decoded : [];
 }
 
+function decode_excluded_occurrence_dates_json(?string $json): array {
+    if ($json === null || $json === '') {
+        return [];
+    }
+
+    $decoded = json_decode($json, true);
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    $dates = [];
+    foreach ($decoded as $value) {
+        if (!is_string($value)) {
+            continue;
+        }
+
+        $date = trim($value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            $dates[$date] = $date;
+        }
+    }
+
+    ksort($dates);
+    return array_values($dates);
+}
+
 function normalize_monthly_rule(mixed $rule): ?array {
     if (!is_array($rule) || !isset($rule['kind']) || !is_string($rule['kind'])) {
         return null;
@@ -451,6 +477,7 @@ function format_meeting_row(array $row): array {
     $recurrenceMonthlyWeek = isset($row['recurrence_monthly_week']) ? (int)$row['recurrence_monthly_week'] : null;
     $recurrenceMonthlyWeekday = normalize_weekday_abbr($row['recurrence_monthly_weekday'] ?? null);
     $recurrenceMonthlyRules = normalize_monthly_rules(decode_monthly_rules_json($row['recurrence_monthly_rules'] ?? null));
+    $excludedOccurrenceDates = decode_excluded_occurrence_dates_json($row['excluded_occurrence_dates'] ?? null);
     if (empty($recurrenceMonthlyRules)) {
         $legacyRule = build_monthly_rule_from_legacy_fields($recurrenceDayOfMonth, $recurrenceMonthlyWeek, $recurrenceMonthlyWeekday);
         $recurrenceMonthlyRules = $legacyRule !== null ? [$legacyRule] : null;
@@ -482,6 +509,7 @@ function format_meeting_row(array $row): array {
         'recurrenceMonthlyWeek' => $isRecurring ? $recurrenceMonthlyWeek : null,
         'recurrenceMonthlyWeekday' => $isRecurring ? $recurrenceMonthlyWeekday : null,
         'recurrenceMonthlyRules' => $isRecurring ? $recurrenceMonthlyRules : null,
+        'excludedOccurrenceDates' => $isRecurring && !empty($excludedOccurrenceDates) ? $excludedOccurrenceDates : null,
         'createdAt' => $row['created_at'],
         'status' => $row['status'],
     ];
@@ -578,6 +606,11 @@ function monthly_rule_matches_date(array $rule, string $dateStr): bool {
 
 function recurring_matches_date(array $row, string $dateStr): bool {
     if (empty($row['is_recurring'])) {
+        return false;
+    }
+
+    $excludedDates = decode_excluded_occurrence_dates_json($row['excluded_occurrence_dates'] ?? null);
+    if (in_array($dateStr, $excludedDates, true)) {
         return false;
     }
 
@@ -739,7 +772,7 @@ if ($method === 'POST') {
     $hasRecurringCol = has_recurring_column($pdo);
 
     if ($hasRecurringCol) {
-        $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, is_recurring, recurrence_type, recurrence_day_of_month, recurrence_days_of_week, recurrence_monthly_week, recurrence_monthly_weekday, recurrence_monthly_rules, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :is_recurring, :recurrence_type, :recurrence_day_of_month, :recurrence_days_of_week, :recurrence_monthly_week, :recurrence_monthly_weekday, :recurrence_monthly_rules, :created_at, :status)');
+        $stmt = $pdo->prepare('INSERT INTO meetings (id, title, date, time, participants, description, agenda, duration_minutes, meeting_type, online_link, is_recurring, recurrence_type, recurrence_day_of_month, recurrence_days_of_week, recurrence_monthly_week, recurrence_monthly_weekday, recurrence_monthly_rules, excluded_occurrence_dates, created_at, status) VALUES (:id, :title, :date, :time, :participants, :description, :agenda, :duration_minutes, :meeting_type, :online_link, :is_recurring, :recurrence_type, :recurrence_day_of_month, :recurrence_days_of_week, :recurrence_monthly_week, :recurrence_monthly_weekday, :recurrence_monthly_rules, :excluded_occurrence_dates, :created_at, :status)');
         $stmt->execute([
             ':id' => $id,
             ':title' => $title,
@@ -758,6 +791,7 @@ if ($method === 'POST') {
             ':recurrence_monthly_week' => $recurrenceState['recurrenceMonthlyWeek'],
             ':recurrence_monthly_weekday' => $recurrenceState['recurrenceMonthlyWeekday'],
             ':recurrence_monthly_rules' => $recurrenceState['recurrenceMonthlyRules'],
+            ':excluded_occurrence_dates' => null,
             ':created_at' => $createdAt,
             ':status' => $status,
         ]);
@@ -989,6 +1023,10 @@ if ($method === 'PATCH') {
         $fields[] = 'recurrence_monthly_week = :recurrence_monthly_week';
         $fields[] = 'recurrence_monthly_weekday = :recurrence_monthly_weekday';
         $fields[] = 'recurrence_monthly_rules = :recurrence_monthly_rules';
+        if (!$recurrenceState['isRecurring']) {
+            $fields[] = 'excluded_occurrence_dates = :excluded_occurrence_dates';
+            $params[':excluded_occurrence_dates'] = null;
+        }
         $params[':is_recurring'] = $recurrenceState['isRecurring'];
         $params[':recurrence_type'] = $recurrenceState['recurrenceType'];
         $params[':recurrence_day_of_month'] = $recurrenceState['recurrenceDayOfMonth'];
@@ -1023,12 +1061,55 @@ if ($method === 'PATCH') {
 if ($method === 'DELETE') {
     require_admin();
     $id = isset($_GET['id']) ? trim((string)$_GET['id']) : '';
+    $occurrenceDate = isset($_GET['occurrenceDate']) ? trim((string)$_GET['occurrenceDate']) : '';
     if ($id === '') {
         $body = json_input();
         $id = trim((string)($body['id'] ?? ''));
+        if ($occurrenceDate === '') {
+            $occurrenceDate = trim((string)($body['occurrenceDate'] ?? ''));
+        }
     }
     if ($id === '') {
         send_json(['error' => 'Missing id'], 400);
+        exit;
+    }
+
+    if ($occurrenceDate !== '') {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $occurrenceDate)) {
+            send_json(['error' => 'Invalid occurrence date'], 400);
+            exit;
+        }
+
+        $stmt = $pdo->prepare('SELECT * FROM meetings WHERE id = :id');
+        $stmt->execute([':id' => $id]);
+        $existing = $stmt->fetch();
+
+        if (!$existing) {
+            send_json(['error' => 'Meeting not found'], 404);
+            exit;
+        }
+
+        if (empty($existing['is_recurring'])) {
+            send_json(['error' => 'Occurrence deletion is only available for recurring meetings'], 400);
+            exit;
+        }
+
+        if (!recurring_matches_date($existing, $occurrenceDate)) {
+            send_json(['error' => 'The selected occurrence does not belong to this series'], 400);
+            exit;
+        }
+
+        $excludedDates = decode_excluded_occurrence_dates_json($existing['excluded_occurrence_dates'] ?? null);
+        $excludedDates[] = $occurrenceDate;
+        $excludedDates = decode_excluded_occurrence_dates_json(json_encode($excludedDates, JSON_UNESCAPED_UNICODE));
+
+        $stmt = $pdo->prepare('UPDATE meetings SET excluded_occurrence_dates = :excluded_occurrence_dates WHERE id = :id');
+        $stmt->execute([
+            ':id' => $id,
+            ':excluded_occurrence_dates' => json_encode($excludedDates, JSON_UNESCAPED_UNICODE),
+        ]);
+
+        send_json(['ok' => true, 'scope' => 'occurrence']);
         exit;
     }
 

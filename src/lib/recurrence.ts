@@ -324,6 +324,7 @@ export const getMonthlyWeekdayPatternFromDate = (
 interface RecurringMeetingShape {
   date: string;
   isRecurring?: boolean;
+  excludedOccurrenceDates?: string[] | null;
   recurrenceType?: RecurrenceType | null;
   recurrenceDayOfMonth?: number | null;
   recurrenceDaysOfWeek?: string[] | null;
@@ -359,6 +360,10 @@ export const meetingOccursOnDate = (
   targetDate: Date | string,
 ) => {
   const dateKey = toDateKey(targetDate);
+
+  if (Array.isArray(meeting.excludedOccurrenceDates) && meeting.excludedOccurrenceDates.includes(dateKey)) {
+    return false;
+  }
 
   if (!meeting.isRecurring) {
     return meeting.date === dateKey;

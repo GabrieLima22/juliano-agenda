@@ -44,7 +44,7 @@ interface MeetingDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (changes: MeetingUpdatePayload) => Promise<void> | void;
-  onDelete: (meeting: Meeting) => Promise<void> | void;
+  onDelete: (meeting: Meeting, scope?: "occurrence" | "series") => Promise<void> | void;
   saving?: boolean;
   deleting?: boolean;
 }
@@ -274,7 +274,17 @@ export const MeetingDetailsDialog = ({
     onSave(payload);
   };
 
-  const handleDelete = () => onDelete(meeting);
+  const canDeleteOccurrence = Boolean(meeting?.isRecurring && meeting?.occurrenceDate);
+  const handleDeleteOccurrence = () => {
+    if (meeting) {
+      onDelete(meeting, "occurrence");
+    }
+  };
+  const handleDeleteSeries = () => {
+    if (meeting) {
+      onDelete(meeting, "series");
+    }
+  };
   const statusLabel: Record<MeetingStatus, string> = { pending: "Pendente", approved: "Aprovada", rejected: "Rejeitada" };
   const statusStyle: Record<MeetingStatus, string> = {
     pending: "border-amber-200 bg-amber-50 text-amber-700",
@@ -307,6 +317,11 @@ export const MeetingDetailsDialog = ({
                 <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700">
                   <RefreshCw className="h-3 w-3" />
                   {recurrenceSummary}
+                </span>
+              )}
+              {canDeleteOccurrence && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                  Ocorrência em {format(parseLocalDate(meeting.occurrenceDate!), "dd/MM/yyyy")}
                 </span>
               )}
             </div>
@@ -494,11 +509,24 @@ export const MeetingDetailsDialog = ({
             </div>
 
             <DialogFooter className="shrink-0 border-t border-border/40 bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:justify-between sm:space-x-0">
+              {canDeleteOccurrence && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDeleteOccurrence}
+                  disabled={deleting || saving}
+                  className="rounded-xl border-amber-200 text-amber-700 hover:border-amber-300 hover:bg-amber-50"
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Excluir ocorrência
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleDelete}
+                onClick={handleDeleteSeries}
                 disabled={deleting || saving}
                 className="rounded-xl border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50"
               >

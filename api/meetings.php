@@ -722,6 +722,12 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
+    $closureSettings = get_agenda_closure_settings($pdo);
+    if (!is_admin() && agenda_closure_is_active($closureSettings)) {
+        send_json(['error' => 'A agenda está temporariamente fechada para novas marcações.'], 423);
+        exit;
+    }
+
     $data = json_input();
     $id = uuidv4();
     $title = trim((string)($data['title'] ?? ''));

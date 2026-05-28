@@ -23,6 +23,24 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
+-- Estrutura para tabela `agenda_closure_settings`
+--
+
+CREATE TABLE `agenda_closure_settings` (
+  `id` tinyint(3) unsigned NOT NULL,
+  `is_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `starts_at` datetime DEFAULT NULL,
+  `ends_at` datetime DEFAULT NULL,
+  `message` text DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `agenda_closure_settings` (`id`, `is_enabled`, `starts_at`, `ends_at`, `message`, `updated_at`) VALUES
+(1, 0, NULL, NULL, NULL, NOW());
+
+-- --------------------------------------------------------
+
+--
 -- Estrutura para tabela `meetings`
 --
 
@@ -67,6 +85,9 @@ ALTER TABLE `meetings`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_date` (`date`),
   ADD KEY `idx_status` (`status`);
+
+ALTER TABLE `agenda_closure_settings`
+  ADD PRIMARY KEY (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

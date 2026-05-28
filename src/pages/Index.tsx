@@ -3,10 +3,13 @@ import { addMonths, format, subMonths } from "date-fns";
 import { LogOut, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AdminLoginDialog } from "@/components/Admin/AdminLoginDialog";
+import { AgendaClosureDialog } from "@/components/Admin/AgendaClosureDialog";
+import { AgendaClosureFab } from "@/components/Admin/AgendaClosureFab";
 import { MeetingDetailsDialog } from "@/components/Admin/MeetingDetailsDialog";
 import { AdminPanel } from "@/components/Admin/AdminPanel";
 import { RecurringMeetingsPanel } from "@/components/Admin/RecurringMeetingsPanel";
 import { AdminToggle } from "@/components/Admin/AdminToggle";
+import { AgendaClosedScreen } from "@/components/Agenda/AgendaClosedScreen";
 import { CalendarGrid } from "@/components/Calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/Calendar/CalendarHeader";
 import { MeetingList } from "@/components/Calendar/MeetingList";
@@ -16,15 +19,20 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   MeetingUpdatePayload,
   deleteMeeting,
+  getAgendaClosure,
   getMeetings,
   getPendingMeetings,
+  reopenAgenda,
+  saveAgendaClosure,
   saveMeeting,
   updateMeeting,
   updateMeetingStatus,
 } from "@/lib/meetingStorage";
+import { isAgendaClosureActive } from "@/lib/agendaClosure";
 import { getMeetingsOccurringOnDate } from "@/lib/recurrence";
 import { resolveApiBase } from "@/lib/runtime";
 import { Meeting } from "@/types/meeting";
+import { AgendaClosurePayload, AgendaClosureSettings } from "@/types/agendaClosure";
 
 type AdminView = "calendar" | "pending" | "recurring";
 
@@ -51,6 +59,11 @@ const Index = () => {
   const [showMeetingDetails, setShowMeetingDetails] = useState(false);
   const [isSavingMeeting, setIsSavingMeeting] = useState(false);
   const [isDeletingMeeting, setIsDeletingMeeting] = useState(false);
+  const [agendaClosure, setAgendaClosure] = useState<AgendaClosureSettings | null>(null);
+  const [showAgendaClosureDialog, setShowAgendaClosureDialog] = useState(false);
+  const [isSavingAgendaClosure, setIsSavingAgendaClosure] = useState(false);
+  const [isReopeningAgenda, setIsReopeningAgenda] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
   const apiBase = resolveApiBase();
 
@@ -74,6 +87,16 @@ const Index = () => {
     }
   };
 
+  const loadAgendaClosure = async () => {
+    try {
+      const closure = await getAgendaClosure();
+      setAgendaClosure(closure);
+    } catch (error) {
+      console.error("Failed to load agenda closure", error);
+      setAgendaClosure(null);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -84,9 +107,22 @@ const Index = () => {
         // Mantem o calendario publico mesmo se a verificacao de sessao falhar.
       }
 
-      await loadMeetings();
+      await Promise.all([loadMeetings(), loadAgendaClosure()]);
     })();
   }, [apiBase]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadAgendaClosure();
+    }, 60000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -124,6 +160,11 @@ const Index = () => {
     [adminView],
   );
 
+  const isAgendaClosedForVisitors = useMemo(
+    () => !isAdmin && isAgendaClosureActive(agendaClosure, now),
+    [agendaClosure, isAdmin, now],
+  );
+
   const selectedDateMeetings = useMemo(() => {
     if (!selectedDate) {
       return [];
@@ -140,21 +181,9 @@ const Index = () => {
       }).map(attachOccurrenceDate);
     }
 
-    const approvedMeetings = getMeetingsOccurringOnDate(meetings, selectedDate, {
+    return getMeetingsOccurringOnDate(meetings, selectedDate, {
       approvedOnly: true,
     }).map(attachOccurrenceDate);
-    const pendingDirectMeetings = meetings.filter(
-      (meeting) => meeting.status === "pending" && meeting.date === occurrenceDate,
-    );
-
-    return [...approvedMeetings, ...pendingDirectMeetings].sort((a, b) => {
-      const timeComparison = (a.time ?? "").localeCompare(b.time ?? "");
-      if (timeComparison !== 0) {
-        return timeComparison;
-      }
-
-      return (a.title ?? "").localeCompare(b.title ?? "");
-    });
   }, [isAdmin, meetings, selectedDate]);
 
   useEffect(() => {
@@ -196,8 +225,7 @@ const Index = () => {
 
   const handleAdminLogin = async () => {
     setIsAdmin(true);
-    await loadMeetings();
-    await loadPendingMeetings();
+    await Promise.all([loadMeetings(), loadPendingMeetings(), loadAgendaClosure()]);
   };
 
   const handleAdminToggleClick = () => {
@@ -217,7 +245,7 @@ const Index = () => {
 
     setIsAdmin(false);
     setAdminView("calendar");
-    await loadMeetings();
+    await Promise.all([loadMeetings(), loadAgendaClosure()]);
     toast.success("Você saiu do modo administrador.");
   };
 
@@ -233,18 +261,48 @@ const Index = () => {
     }
   };
 
+  const handleUnauthorizedAdminAction = async () => {
+    setIsAdmin(false);
+    setAdminView("calendar");
+    setShowMeetingDetails(false);
+    setSelectedMeetingForAdmin(null);
+    setShowAdminLogin(true);
+    await loadAgendaClosure();
+    toast.error("Sua sessão administrativa expirou. Faça login novamente.");
+  };
+
   const handleApproveMeeting = async (id: string) => {
-    await updateMeetingStatus(id, "approved");
-    await loadMeetings();
-    await loadPendingMeetings();
-    toast.success("Reunião aprovada com sucesso.");
+    try {
+      await updateMeetingStatus(id, "approved");
+      await loadMeetings();
+      await loadPendingMeetings();
+      toast.success("Reunião aprovada com sucesso.");
+    } catch (error) {
+      if (error instanceof Error && error.message === "Unauthorized") {
+        await handleUnauthorizedAdminAction();
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : "Erro ao aprovar a reunião.";
+      toast.error(message);
+    }
   };
 
   const handleRejectMeeting = async (id: string) => {
-    await updateMeetingStatus(id, "rejected");
-    await loadMeetings();
-    await loadPendingMeetings();
-    toast.success("Solicitação rejeitada.");
+    try {
+      await updateMeetingStatus(id, "rejected");
+      await loadMeetings();
+      await loadPendingMeetings();
+      toast.success("Solicitação rejeitada.");
+    } catch (error) {
+      if (error instanceof Error && error.message === "Unauthorized") {
+        await handleUnauthorizedAdminAction();
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : "Erro ao rejeitar a solicitação.";
+      toast.error(message);
+    }
   };
 
   const handleSaveMeetingChanges = async (changes: MeetingUpdatePayload) => {
@@ -298,6 +356,35 @@ const Index = () => {
     }
   };
 
+  const handleSaveAgendaClosure = async (payload: AgendaClosurePayload) => {
+    setIsSavingAgendaClosure(true);
+    try {
+      const closure = await saveAgendaClosure(payload);
+      setAgendaClosure(closure);
+      setShowAgendaClosureDialog(false);
+      toast.success("Período de bloqueio salvo.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao salvar o bloqueio da agenda.";
+      toast.error(message);
+    } finally {
+      setIsSavingAgendaClosure(false);
+    }
+  };
+
+  const handleReopenAgenda = async () => {
+    setIsReopeningAgenda(true);
+    try {
+      const closure = await reopenAgenda();
+      setAgendaClosure(closure);
+      toast.success("Agenda reaberta com sucesso.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao reabrir a agenda.";
+      toast.error(message);
+    } finally {
+      setIsReopeningAgenda(false);
+    }
+  };
+
   return (
     <div className="min-h-screen" lang="pt-BR">
       <AdminToggle onClick={handleAdminToggleClick} />
@@ -305,6 +392,13 @@ const Index = () => {
         open={showAdminLogin}
         onOpenChange={setShowAdminLogin}
         onLogin={handleAdminLogin}
+      />
+      <AgendaClosureDialog
+        open={showAgendaClosureDialog}
+        onOpenChange={setShowAgendaClosureDialog}
+        value={agendaClosure}
+        saving={isSavingAgendaClosure}
+        onSave={handleSaveAgendaClosure}
       />
       <MeetingDetailsDialog
         meeting={selectedMeetingForAdmin}
@@ -315,8 +409,18 @@ const Index = () => {
         saving={isSavingMeeting}
         deleting={isDeletingMeeting}
       />
+      {isAdmin && (
+        <AgendaClosureFab
+          closure={agendaClosure}
+          onOpenSettings={() => setShowAgendaClosureDialog(true)}
+          onReopen={handleReopenAgenda}
+          reopening={isReopeningAgenda}
+        />
+      )}
 
-      {isMobile ? (
+      {isAgendaClosedForVisitors && agendaClosure ? (
+        <AgendaClosedScreen closure={agendaClosure} />
+      ) : isMobile ? (
         <MobileAgendaView
           currentMonth={currentMonth}
           selectedDate={selectedDate}

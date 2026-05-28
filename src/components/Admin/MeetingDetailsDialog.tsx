@@ -519,7 +519,7 @@ export const MeetingDetailsDialog = ({
                   className="rounded-xl border-amber-200 text-amber-700 hover:border-amber-300 hover:bg-amber-50"
                 >
                   <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  Excluir ocorrência
+                  Excluir reunião
                 </Button>
               )}
               <Button
@@ -531,7 +531,7 @@ export const MeetingDetailsDialog = ({
                 className="rounded-xl border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50"
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                {meeting.isRecurring ? "Excluir série" : "Excluir"}
+                {meeting.isRecurring ? "Excluir série" : "Excluir reunião"}
               </Button>
               <Button
                 type="submit"

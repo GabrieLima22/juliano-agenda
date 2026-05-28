@@ -1,4 +1,5 @@
 import { Meeting, MeetingType } from "@/types/meeting";
+import { AgendaClosurePayload, AgendaClosureSettings } from "@/types/agendaClosure";
 import { resolveApiBase } from "@/lib/runtime";
 
 const API_BASE = resolveApiBase();
@@ -140,4 +141,16 @@ export const updateMeeting = async (payload: MeetingUpdatePayload): Promise<Meet
   append("status");
 
   return request<Meeting>("meetings.php", { method: "PATCH", json: body });
+};
+
+export const getAgendaClosure = async (): Promise<AgendaClosureSettings> => {
+  return request<AgendaClosureSettings>("agenda-closure.php");
+};
+
+export const saveAgendaClosure = async (payload: AgendaClosurePayload): Promise<AgendaClosureSettings> => {
+  return request<AgendaClosureSettings>("agenda-closure.php", { method: "PATCH", json: payload });
+};
+
+export const reopenAgenda = async (): Promise<AgendaClosureSettings> => {
+  return request<AgendaClosureSettings>("agenda-closure.php", { method: "DELETE" });
 };

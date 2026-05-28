@@ -140,6 +140,92 @@ function backfill_recurrence_compatibility(PDO $pdo): void {
     }
 }
 
+function ensure_agenda_closure_table_mysql(PDO $pdo): void {
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS agenda_closure_settings (
+            id TINYINT UNSIGNED NOT NULL,
+            is_enabled TINYINT(1) NOT NULL DEFAULT 0,
+            starts_at DATETIME DEFAULT NULL,
+            ends_at DATETIME DEFAULT NULL,
+            message TEXT DEFAULT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+    );
+}
+
+function ensure_agenda_closure_table_sqlite(PDO $pdo): void {
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS agenda_closure_settings (
+            id INTEGER PRIMARY KEY,
+            is_enabled INTEGER NOT NULL DEFAULT 0,
+            starts_at TEXT DEFAULT NULL,
+            ends_at TEXT DEFAULT NULL,
+            message TEXT DEFAULT NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )"
+    );
+}
+
+function ensure_agenda_closure_schema(PDO $pdo): void {
+    if (db_driver_name($pdo) === 'sqlite') {
+        ensure_agenda_closure_table_sqlite($pdo);
+    } else {
+        ensure_agenda_closure_table_mysql($pdo);
+    }
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) AS total FROM agenda_closure_settings WHERE id = 1');
+    $stmt->execute();
+    $row = $stmt->fetch();
+    $count = isset($row['total']) ? (int)$row['total'] : 0;
+
+    if ($count === 0) {
+        $insert = $pdo->prepare(
+            'INSERT INTO agenda_closure_settings (id, is_enabled, starts_at, ends_at, message, updated_at)
+             VALUES (1, 0, NULL, NULL, NULL, CURRENT_TIMESTAMP)'
+        );
+        $insert->execute();
+    }
+}
+
+function get_agenda_closure_settings(PDO $pdo): array {
+    ensure_agenda_closure_schema($pdo);
+
+    $stmt = $pdo->prepare('SELECT * FROM agenda_closure_settings WHERE id = 1');
+    $stmt->execute();
+    $row = $stmt->fetch();
+
+    if (is_array($row)) {
+        return $row;
+    }
+
+    return [
+        'id' => 1,
+        'is_enabled' => 0,
+        'starts_at' => null,
+        'ends_at' => null,
+        'message' => null,
+        'updated_at' => null,
+    ];
+}
+
+function agenda_closure_is_active(array $settings, ?DateTimeImmutable $now = null): bool {
+    if (empty($settings['is_enabled']) || empty($settings['starts_at']) || empty($settings['ends_at'])) {
+        return false;
+    }
+
+    $timezone = new DateTimeZone('America/Sao_Paulo');
+    $start = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string)$settings['starts_at'], $timezone);
+    $end = DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string)$settings['ends_at'], $timezone);
+
+    if (!$start || !$end) {
+        return false;
+    }
+
+    $reference = $now ?? new DateTimeImmutable('now', $timezone);
+    return $reference >= $start && $reference <= $end;
+}
+
 function ensure_meetings_table_mysql(PDO $pdo): void {
     $pdo->exec(
         "CREATE TABLE IF NOT EXISTS meetings (
@@ -279,6 +365,7 @@ function ensure_meetings_schema(PDO $pdo): void {
         }
 
         backfill_recurrence_compatibility($pdo);
+        ensure_agenda_closure_schema($pdo);
     } catch (Throwable $e) {
         // Continua mesmo se essa migration falhar
     }
@@ -329,6 +416,7 @@ function get_pdo(): PDO {
     }
 
     ensure_meetings_schema($pdo);
+    ensure_agenda_closure_schema($pdo);
 
     return $pdo;
 }
